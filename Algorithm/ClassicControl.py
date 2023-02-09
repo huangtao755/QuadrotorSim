@@ -4,7 +4,7 @@
 import numpy as np
 import torch as t
 
-import Evn.QuadrotorFlyModel as Qfm
+import Evn.Quadrotor.QuadrotorFlyModel as Qfm
 
 
 class PidControl(object):
@@ -217,3 +217,8 @@ class PidControl(object):
         self.err_p_att_v = np.zeros(3)
         self.err_i_att_v = np.zeros(3)
         self.err_d_att_v = np.zeros(3)
+
+
+class LqrController(object):
+    def __init__(self):
+        pass

@@ -8,8 +8,7 @@ import torch
 from Algorithm.ClassicControl import PidControl
 from Algorithm.Velocity_Control import VelocityControl
 from Comman import MemoryStore
-from Evn import QuadrotorFlyGui as Qgui
-from Evn import QuadrotorFlyModel as Qfm
+from Evn.Quadrotor import QuadrotorFlyGui as Qgui, QuadrotorFlyModel as Qfm
 
 D2R = Qfm.D2R
 

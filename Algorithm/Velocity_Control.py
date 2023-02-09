@@ -4,7 +4,7 @@
 import numpy as np
 import torch as t
 
-import Evn.QuadrotorFlyModel as Qfm
+import Evn.Quadrotor.QuadrotorFlyModel as Qfm
 
 
 class VelocityControl(object):

@@ -7,11 +7,7 @@ from enum import Enum
 import numpy as np
 
 from Comman import MemoryStore
-from Evn import SensorBase
-from Evn import SensorCompass
-from Evn import SensorGps
-from Evn import SensorImu
-
+from Evn.Quadrotor import SensorCompass, SensorGps, SensorBase, SensorImu
 
 # definition of key constant
 D2R = np.pi / 180

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from Algorithm.ClassicControl import PidControl
+from Algorithm.Velocity_Control import VelocityControl
 from Comman import MemoryStore
 from Evn import QuadrotorFlyGui as Qgui
 from Evn import QuadrotorFlyModel as Qfm
@@ -21,7 +22,7 @@ def AttitudeControl():
     print("PID controller test")
     uav_para = Qfm.QuadParas(structure_type=Qfm.StructureType.quad_x)
     sim_para = Qfm.QuadSimOpt(init_mode=Qfm.SimInitType.fixed, init_att=np.array([0, 0, 0]),
-                              init_pos=np.array([0, 0, 0]))
+                              init_pos=np.array([0, -10, 0]))
     quad = Qfm.QuadModel(uav_para, sim_para)
     record = MemoryStore.DataRecord()
     record.clear()
@@ -30,6 +31,7 @@ def AttitudeControl():
     gui = Qgui.QuadrotorFlyGui([quad])
 
     # init controller
+
     pid = PidControl(uav_para=uav_para,
                      kp_pos=np.array([0.5, 0.5, 0.43]),
                      ki_pos=np.array([0, 0., 0.0]),
@@ -45,22 +47,58 @@ def AttitudeControl():
                      ki_att_v=np.array([0.01, 0.01, 0.01]),
                      kd_att_v=np.array([0., 0., 0.01]))
 
+    v_pid = VelocityControl(uav_para=uav_para,
+                           kp_vel=np.array([1.5, 1.5, 1.4]),
+                           ki_vel=np.array([0.01, 0.01, 0.01]),
+                           kd_vel=np.array([0.2, 0.2, 0.]),
+
+                           kp_att=np.array([2., 2., 2.]),
+                           ki_att=np.array([0., 0, 0]),
+                           kd_att=np.array([0, 0, 0]),
+                           kp_att_v=np.array([15, 15, 10]),
+                           ki_att_v=np.array([0.01, 0.01, 0.01]),
+                           kd_att_v=np.array([0., 0., 0.01]))
+
     # simulator init
     step_num = 0
     ref = np.array([10, 10, -10, 0])
     print(quad.observe(), 'observe')
     # simulate begin
 
-    for i in range(2000):
-        ref_att = [0, 0, 0]
-        ref_v = [2, 0, 0]
+    for i in range(400):
+        ref_v = [0, 5, 0]
+        state_temp = quad.observe()
+        action = v_pid.pid_control(state=state_temp, ref_vel=ref_v)
+        quad.step(action)
+        if i % 5 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
+        if state_temp[4] >= 5:
+            break
+
+    for i in range(100):
+        state_temp = quad.observe()
+        kp = 3
+        kd = 0.5
+        u = kp * (0 - state_temp[6]) + kd * (-state_temp[9])
+        action = [9.8 * uav_para.uavM + abs(u), u, 0, 0]
+        quad.step(action)
+        if i % 5 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
 
     for i in range(200):
         state_temp = quad.observe()
         # action = pid.pid_control(state_temp, ref)
         action = [(20+9.8) * uav_para.uavM, 0, 0, 0]
         quad.step(action)
-        if i % 1 == 0:
+        if i % 5 == 0:
             gui.quadGui.target = ref[0:3]
             gui.quadGui.sim_time = quad.ts
             gui.render()
@@ -72,7 +110,7 @@ def AttitudeControl():
     for i in range(20):
         state_temp = quad.observe()
         # action = pid.pid_control(state_temp, ref)
-        action = [np.pi/5, 0, -np.pi/5, 0]
+        action = [abs(np.pi/5), 0, -np.pi/5, 0]
         quad.step(action)
         if i % 1 == 0:
             gui.quadGui.target = ref[0:3]
@@ -90,10 +128,10 @@ def AttitudeControl():
             kp = 1.8
             kd = 0.5
             u = kp * (-90 * D2R - state_temp[7]) + kd * (-state_temp[10])
-            u = 5 * torch.tanh(torch.tensor(u/5))
+            u = 5 * torch.tanh(torch.tensor(u/uav_para.uavM/5)) * uav_para.uavM
             u = max(u, 0)
 
-            action = [u, 0, u, 0]
+            action = [abs(u), 0, u, 0]
             print(action)
 
         quad.step(action)
@@ -103,6 +141,7 @@ def AttitudeControl():
             gui.render()
         record.buffer_append((state_temp, action))
         step_num += 1
+
 
     record.episode_append()
     data = record.get_episode_buffer()

@@ -12,7 +12,7 @@ from Evn import QuadrotorFlyModel as Qfm
 
 
 class QuadrotorFlyGuiEnv(object):
-    def __init__(self, bound_x=10., bound_y=10., bound_z=15.):
+    def __init__(self, bound_x=20., bound_y=20., bound_z=15.):
         """Define the environment of quadrotor simulation
         :param bound_x:
         :param bound_y:
@@ -139,6 +139,7 @@ class QuadrotorFlyGuiUav(object):
                                                                        attitude[2] / np.pi * 180))))
             # draw target_point
             quad_gui['target_point'].set_data(self.target[0], self.target[1])
+            print(self.target[2])
             quad_gui['target_point'].set_3d_properties(self.target[2])
 
             # draw origin point

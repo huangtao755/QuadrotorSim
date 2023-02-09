@@ -7,7 +7,7 @@ import torch as t
 import Evn.QuadrotorFlyModel as Qfm
 
 
-class PidControl(object):
+class VelocityControl(object):
     def __init__(self,
                  uav_para=Qfm.QuadParas(structure_type=Qfm.StructureType.quad_x),
                  kp_pos=np.array([0, 0, 0]),
@@ -77,34 +77,34 @@ class PidControl(object):
 
         self.err = np.zeros(12)
 
-    def pid_control(self, state, ref_state):
+    def pid_control(self, state, ref_vel):
         """
 
         :param state:
-        :param ref_state:
+        :param ref_vel:
         :return:
         """
         print('________________________________step%d simulation____________________________' % self.step_num)
         action = np.zeros(4)
 
         " _______________position double loop_______________ "
-        # ########position loop######## #
-        pos = state[0:3]
-        ref_pos = ref_state[0:3]
-        err_p_pos_o = ref_pos - pos  # get new error of pos
-        err_p_pos_ = np.array(8 * t.tanh(t.tensor(err_p_pos_o / 8)))
-        # err_p_pos_ = err_p_pos_.clip(np.array([-8, -8, -8]), np.array([8, 8, 8]))
-
-        if self.step_num == 0:
-            self.err_d_pos = np.zeros(3)
-        else:
-            self.err_d_pos = (err_p_pos_ - self.err_p_pos) / self.ts  # get new error of pos-dot
-        self.err_p_pos = err_p_pos_  # update pos error
-        self.err_i_pos += self.err_p_pos * self.ts  # update pos integral
-
-        ref_vel = self.kp_pos * self.err_p_pos \
-                  + self.ki_pos * self.err_i_pos \
-                  + self.kd_pos * self.err_d_pos  # get ref_v as input of velocity input
+        # # ########position loop######## #
+        # pos = state[0:3]
+        # ref_pos = ref_state[0:3]
+        # err_p_pos_o = ref_pos - pos  # get new error of pos
+        # err_p_pos_ = np.array(8 * t.tanh(t.tensor(err_p_pos_o / 8)))
+        # # err_p_pos_ = err_p_pos_.clip(np.array([-8, -8, -8]), np.array([8, 8, 8]))
+        #
+        # if self.step_num == 0:
+        #     self.err_d_pos = np.zeros(3)
+        # else:
+        #     self.err_d_pos = (err_p_pos_ - self.err_p_pos) / self.ts  # get new error of pos-dot
+        # self.err_p_pos = err_p_pos_  # update pos error
+        # self.err_i_pos += self.err_p_pos * self.ts  # update pos integral
+        #
+        # ref_vel = self.kp_pos * self.err_p_pos \
+        #           + self.ki_pos * self.err_i_pos \
+        #           + self.kd_pos * self.err_d_pos  # get ref_v as input of velocity input
 
         # ########velocity loop######## #
         vel = state[3:6]
@@ -141,7 +141,7 @@ class PidControl(object):
         # print('phy', phy)
         # print('__________________________________')
 
-        ref_phy = ref_state[3]
+        ref_phy = 0
         ref_phi = np.arcsin(self.uav_par.uavM * (a_pos[0] * np.sin(ref_phy) - a_pos[1] * np.cos(ref_phy)) / u1)
 
         ref_theta = np.arcsin(
@@ -194,7 +194,7 @@ class PidControl(object):
         u = a_att * self.uav_par.uavInertia
         u1 = max(u1, np.sqrt(np.linalg.norm(u)))
         action = np.array([u1, u[0], u[1], u[2]])
-        self.err = np.array(np.hstack((err_p_pos_o, self.err_p_vel, self.err_p_att, self.err_p_att_v)))
+        # self.err = np.array(np.hstack((err_p_pos_o, self.err_p_vel, self.err_p_att, self.err_p_att_v)))
         self.step_num += 1
 
         return action

@@ -28,7 +28,7 @@ Created on  六月 23 11:24 2019
 import numpy as np
 
 from Comman import CommonFunctions as Cf
-from Evn.SensorBase import SensorBase, SensorType
+from Evn.Quadrotor.SensorBase import SensorBase, SensorType
 
 """
 ********************************************************************************************************
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     D2R = Cf.D2R
     testFlag = 1
     if testFlag == 1:
-        from Evn import QuadrotorFlyModel as Qfm
+        from Evn.Quadrotor import QuadrotorFlyModel as Qfm
 
         q1 = Qfm.QuadModel(Qfm.QuadParas(), Qfm.QuadSimOpt(init_mode=Qfm.SimInitType.fixed,
                                                            init_att=np.array([5, 6, 8])))

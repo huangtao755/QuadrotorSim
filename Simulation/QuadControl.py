@@ -11,8 +11,7 @@ import numpy as np
 
 from Algorithm.ClassicControl import PidControl
 from Comman import MemoryStore
-from Evn import QuadrotorFlyGui as Qgui
-from Evn import QuadrotorFlyModel as Qfm
+from Evn.Quadrotor import QuadrotorFlyGui as Qgui, QuadrotorFlyModel as Qfm
 
 D2R = Qfm.D2R
 current_path = os.path.abspath(os.path.join(os.getcwd(), ".."))

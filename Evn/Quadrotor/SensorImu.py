@@ -29,7 +29,7 @@ import numpy as np
 
 from Comman import CommonFunctions as Cf
 # import QuadrotorFly.SensorBase as SensorBase
-from Evn.SensorBase import SensorBase, SensorType
+from Evn.Quadrotor.SensorBase import SensorBase, SensorType
 
 """
 ********************************************************************************************************
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         print(flag1, "val", v1, flag2, "val", v2)
 
     elif testFlag == 2:
-        from Evn import QuadrotorFlyModel as Qfm
+        from Evn.Quadrotor import QuadrotorFlyModel as Qfm
 
         q1 = Qfm.QuadModel(Qfm.QuadParas(), Qfm.QuadSimOpt(init_mode=Qfm.SimInitType.fixed,
                                                            init_att=np.array([15, -20, 5])))

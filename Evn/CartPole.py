@@ -20,8 +20,15 @@ class CartPoleEnv(object):
         self.gravity = 9.8
         self.masscart = 1.0
         self.masspole = 0.1
+
+        self.masscart = 0.5
+        self.masspole = 0.2
+
         self.total_mass = self.masspole + self.masscart
         self.length = 0.5  # actually half the pole's length
+
+        self.length = 0.3
+
         self.polemass_length = self.masspole * self.length
         # self.force_mag = 10.0
         self.tau = 0.01  # seconds between state updates
@@ -190,7 +197,24 @@ class CartPoleEnv(object):
             return self.isopen
 
     def sys_matr(self):
-        +
+        j = self.masscart * self.length**2 / 3
+        a_22 = - self.mu_cart * (j + self.masspole * self.length**2) / \
+            (j * self.total_mass + self.masscart * self.masspole * self.length**2)
+        a_23 = - self.masspole**2 * self.length**2 * self.gravity / \
+            (j * self.total_mass + self.masscart * self.masspole * self.length**2)
+        a_42 = self.mu_cart * self.masspole * self.length / \
+            (j * self.total_mass + self.masscart * self.masspole * self.length**2)
+        a_43 = self.masspole * self.length * self.gravity * (self.masspole + self.masscart) / \
+            (j * self.total_mass + self.masscart * self.masspole * self.length**2)
+        A = np.mat([[0, 1, 0, 0], [0, a_22, a_23, 0], [0, 0, 0, 1], [0, a_42, a_43, 0]])
+
+        b_2 = (j + self.masspole * self.length**2) / \
+            (j * self.total_mass + self.masscart * self.masspole * self.length**2)
+        b_4 = - (self.masspole * self.length) / \
+            (j * self.total_mass + self.masscart * self.masspole * self.length**2)
+        B = np.mat([0, b_2, 0, b_4])
+
+        return A, B
 
     def close(self):
         if self.screen is not None:

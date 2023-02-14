@@ -125,6 +125,22 @@ def traject_track():
                      ki_att_v=np.array([0.01, 0.01, 0.01]),
                      kd_att_v=np.array([0., 0., 0.01]))
 
+    # pid = PidControl(uav_para=uav_para,
+    #                  kp_pos=np.array([0.52, 0.52, 0.52]),
+    #                  ki_pos=np.array([0, 0., 0.0]),
+    #                  kd_pos=np.array([0, 0, 0]),
+    #                  kp_vel=np.array([1.6, 1.6, 1.8]),
+    #                  ki_vel=np.array([0.0, 0.0, 0.0]),
+    #                  kd_vel=np.array([0.05, 0.05, 0.05]),
+    #
+    #                  kp_att=np.array([2., 2., 2.]),
+    #                  ki_att=np.array([0., 0, 0]),
+    #                  kd_att=np.array([0, 0, 0]),
+    #                  kp_att_v=np.array([25, 25, 10]),
+    #                  ki_att_v=np.array([0.0, 0.0, 0.0]),
+    #                  kd_att_v=np.array([0.05, 0.05, 0.01]))
+
+
     # simulator init
     step_num = 0
     ref = np.array([15, -15, -15, 0])
@@ -133,15 +149,15 @@ def traject_track():
     # simulate begin
     for i in range(3000):
 
-        ref = np.array([2 * np.cos(np.pi / 9 * quad.ts + np.pi),
-                        2 * np.sin(np.pi / 9 * quad.ts + np.pi),
-                        0.2 * quad.ts,
-                        np.pi / 9 * quad.ts])
+        ref = np.array([2 * np.cos(np.pi / 12 * quad.ts + np.pi),
+                        2 * np.sin(np.pi / 12 * quad.ts + np.pi),
+                        0.0 * quad.ts,
+                        np.pi / 12 * quad.ts]) # + ref_v * pid.ts
 
-        ref_v = np.array([-np.pi * np.sin(np.pi / 9 * (quad.ts + pid.ts) + np.pi) * 2 / 9,
-                          np.pi * np.cos(np.pi / 9 * (quad.ts + pid.ts) + np.pi) * 2 / 9,
-                          0.2,
-                          np.pi / 9])  # target velocity
+        ref_v = np.array([-np.pi * np.sin(np.pi / 12 * (quad.ts + pid.ts) + np.pi) * 2 / 12,
+                          np.pi * np.cos(np.pi / 12 * (quad.ts + pid.ts) + np.pi) * 2 / 12,
+                          0.0,
+                          np.pi / 12])  # target velocity
         state_temp = quad.observe()
         state_compensate = state_temp - np.array([0, 0, 0,
                                                   ref_v[0], ref_v[1], ref_v[2],

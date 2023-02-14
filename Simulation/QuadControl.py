@@ -36,20 +36,34 @@ class QuadControl(object):
         self.sim_para = Qfm.QuadSimOpt(init_mode=Qfm.SimInitType.fixed, init_att=init_att,
                                        init_pos=init_pos)
         self.quad = Qfm.QuadModel(self.uav_para, self.sim_para)
+        # self.pid = PidControl(uav_para=self.uav_para,
+        #                       kp_pos=np.array([0.52, 0.52, 0.52]),
+        #                       ki_pos=np.array([0, 0., 0.0]),
+        #                       kd_pos=np.array([0, 0, 0]),
+        #                       kp_vel=np.array([1.6, 1.6, 1.8]),
+        #                       ki_vel=np.array([0.0, 0.0, 0.0]),
+        #                       kd_vel=np.array([0.05, 0.05, 0.05]),
+        #
+        #                       kp_att=np.array([2., 2., 2.]),
+        #                       ki_att=np.array([0., 0, 0]),
+        #                       kd_att=np.array([0, 0, 0]),
+        #                       kp_att_v=np.array([25, 25, 10]),
+        #                       ki_att_v=np.array([0.0, 0.0, 0.0]),
+        #                       kd_att_v=np.array([0.05, 0.05, 0.01]))
         self.pid = PidControl(uav_para=self.uav_para,
-                              kp_pos=np.array([0.52, 0.52, 0.52]),
-                              ki_pos=np.array([0, 0., 0.0]),
-                              kd_pos=np.array([0, 0, 0]),
-                              kp_vel=np.array([1.6, 1.6, 1.8]),
-                              ki_vel=np.array([0.0, 0.0, 0.0]),
-                              kd_vel=np.array([0.05, 0.05, 0.05]),
+                         kp_pos=np.array([0.6, 0.6, 0.6]),
+                         ki_pos=np.array([0., 0., 0.0]),
+                         kd_pos=np.array([0., 0., 0.]),
+                         kp_vel=np.array([1.5, 1.5, 1.5]),
+                         ki_vel=np.array([0.15, 0.15, 0.1]),
+                         kd_vel=np.array([0., 0., 0.]),
 
-                              kp_att=np.array([2., 2., 2.]),
-                              ki_att=np.array([0., 0, 0]),
-                              kd_att=np.array([0, 0, 0]),
-                              kp_att_v=np.array([25, 25, 10]),
-                              ki_att_v=np.array([0.0, 0.0, 0.0]),
-                              kd_att_v=np.array([0.05, 0.05, 0.01]))
+                         kp_att=np.array([3, 3, 2.]),
+                         ki_att=np.array([0., 0, 0]),
+                         kd_att=np.array([0., 0., 0]),
+                         kp_att_v=np.array([13, 13, 10]),
+                         ki_att_v=np.array([0.01, 0.01, 0.01]),
+                         kd_att_v=np.array([0., 0., 0.01]))
 
         self.state_temp = self.quad.observe()
         self.record = MemoryStore.DataRecord()
@@ -198,8 +212,8 @@ def main():
     quad1 = QuadControl(init_pos=np.array([0, 0, 0]), name='quad1')
     quad2 = QuadControl(init_pos=np.array([0, 0, 0]), name='quad2')
     gui = Qgui.QuadrotorFlyGui([quad1.quad, quad2.quad])
-    steps = 500
-    ref = np.array([-5, -5, -5, 0])
+    steps = 1000
+    ref = np.array([-15, -15, -15, 0])
     ref_v = np.array([0, 0, 0, 0])
     for i in range(steps):
         # ref = np.array([3 * np.cos(np.pi / 18 * quad1.quad.ts + np.pi),

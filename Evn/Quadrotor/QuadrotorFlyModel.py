@@ -127,7 +127,7 @@ class QuadSimOpt(object):
 
 
 class QuadActuator(object):
-    """Dynamic of  actuator including motor and propeller
+    """Dynamic of actuator including motor and propeller
     """
 
     def __init__(self, quad_para: QuadParas, mode: ActuatorMode):
@@ -320,9 +320,11 @@ class QuadModel(object):
             state[10] * state[11] * (para.uavInertia[1] - para.uavInertia[2]) / para.uavInertia[0]
             - para.rotorInertia / para.uavInertia[0] * state[10] * rotor_rate_sum
             + para.uavL * action[1] / para.uavInertia[0],
+
             state[9] * state[11] * (para.uavInertia[2] - para.uavInertia[0]) / para.uavInertia[1]
             + para.rotorInertia / para.uavInertia[1] * state[9] * rotor_rate_sum
             + para.uavL * action[2] / para.uavInertia[1],
+
             state[9] * state[10] * (para.uavInertia[0] - para.uavInertia[1]) / para.uavInertia[2]
             + action[3] / para.uavInertia[2]
         ]) + noise_att
@@ -345,6 +347,7 @@ class QuadModel(object):
                     # name = str(index) + '-' + sensor.get_name()
                     name = sensor.get_name()
                     sensor_data.update({name: sensor.observe()})
+            print(sensor_data)
             return sensor_data
         else:
             return np.hstack([self.position, self.velocity, self.attitude, self.angular])
@@ -367,7 +370,15 @@ class QuadModel(object):
                  + np.sum(np.square(self.attitude)) / 3 + np.sum(np.square(self.angular)) / 10
         return reward
 
-    def rotor_distribute_dynamic(self, thrusts, torque):
+    def rotor_distribute_dynamic(self, action):
+        x_shape = 0
+        pluse_shape = np.array([[+1, +1, +1, +1],
+                      [-1, +1, +1, -1],
+                      [+1, +1, -1, -1],
+                      [+1, +1, -1, -1]])
+
+        self.actuator.rotorRate[3]
+        pass
         """ calculate torque according to the distribution of rotors
         :param thrusts:
         :param torque:
@@ -398,21 +409,20 @@ class QuadModel(object):
                         ******     
         ---------------------------------------------------------------------------------------------------                                                                          
         '''
-        forces = np.zeros(4)
-        if self.uavPara.structureType == StructureType.quad_plus:
-            forces[0] = np.sum(thrusts)
-            forces[1] = thrusts[1] - thrusts[0]
-            forces[2] = thrusts[3] - thrusts[2]
-            forces[3] = torque[3] + torque[2] - torque[1] - torque[0]
-        elif self.uavPara.structureType == StructureType.quad_x:
-            forces[0] = np.sum(thrusts)
-            forces[1] = -thrusts[0] + thrusts[1] + thrusts[2] - thrusts[3]
-            forces[2] = -thrusts[0] + thrusts[1] - thrusts[2] + thrusts[3]
-            forces[3] = -torque[0] - torque[1] + torque[2] + torque[3]
-        else:
-            forces = np.zeros(4)
+        # forces = np.zeros(4)
+        # if self.uavPara.structureType == StructureType.quad_plus:
+        #     forces[0] = np.sum(thrusts)
+        #     forces[1] = thrusts[1] - thrusts[0]
+        #     forces[2] = thrusts[3] - thrusts[2]
+        #     forces[3] = torque[3] + torque[2] - torque[1] - torque[0]
+        # elif self.uavPara.structureType == StructureType.quad_x:
+        #     forces[0] = np.sum(thrusts)
+        #     forces[1] = -thrusts[0] + thrusts[1] + thrusts[2] - thrusts[3]
+        #     forces[2] = -thrusts[0] + thrusts[1] - thrusts[2] + thrusts[3]
+        #     forces[3] = -torque[0] - torque[1] + torque[2] + torque[3]
+        # else:
+        #     forces = np.zeros(4)
 
-        return forces
 
     # def step(self, action: 'int > 0'):
     #

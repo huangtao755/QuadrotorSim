@@ -29,7 +29,7 @@ def point_track():
 
     # init controller
     pid = PidControl(uav_para=uav_para,
-                     kp_pos=np.array([0.5, 0.5, 0.43]),
+                     kp_pos=np.array([0.5, 0.5, 0.5]),
                      ki_pos=np.array([0, 0., 0.0]),
                      kd_pos=np.array([0, 0, 0]),
                      kp_vel=np.array([1.5, 1.5, 1.4]),
@@ -110,36 +110,35 @@ def traject_track():
     gui = Qgui.QuadrotorFlyGui([quad])
 
     # init controller
-    pid = PidControl(uav_para=uav_para,
-                     kp_pos=np.array([0.5, 0.5, 0.43]),
-                     ki_pos=np.array([0, 0., 0.0]),
-                     kd_pos=np.array([0, 0, 0]),
-                     kp_vel=np.array([1.5, 1.5, 1.4]),
-                     ki_vel=np.array([0.01, 0.01, 0.01]),
-                     kd_vel=np.array([0.1, 0.1, 0.]),
-
-                     kp_att=np.array([2., 2., 2.]),
-                     ki_att=np.array([0., 0, 0]),
-                     kd_att=np.array([0, 0, 0]),
-                     kp_att_v=np.array([12, 12, 10]),
-                     ki_att_v=np.array([0.01, 0.01, 0.01]),
-                     kd_att_v=np.array([0., 0., 0.01]))
-
     # pid = PidControl(uav_para=uav_para,
-    #                  kp_pos=np.array([0.52, 0.52, 0.52]),
+    #                  kp_pos=np.array([0.5, 0.5, 0.5]),
     #                  ki_pos=np.array([0, 0., 0.0]),
-    #                  kd_pos=np.array([0, 0, 0]),
-    #                  kp_vel=np.array([1.6, 1.6, 1.8]),
-    #                  ki_vel=np.array([0.0, 0.0, 0.0]),
-    #                  kd_vel=np.array([0.05, 0.05, 0.05]),
+    #                  kd_pos=np.array([0.1, 0.1, 0.1]),
+    #                  kp_vel=np.array([1.5, 1.5, 1.5]),
+    #                  ki_vel=np.array([0.01, 0.01, 0.01]),
+    #                  kd_vel=np.array([0., 0., 0.]),
     #
-    #                  kp_att=np.array([2., 2., 2.]),
+    #                  kp_att=np.array([3., 3., 3.]),
     #                  ki_att=np.array([0., 0, 0]),
     #                  kd_att=np.array([0, 0, 0]),
-    #                  kp_att_v=np.array([25, 25, 10]),
-    #                  ki_att_v=np.array([0.0, 0.0, 0.0]),
-    #                  kd_att_v=np.array([0.05, 0.05, 0.01]))
+    #                  kp_att_v=np.array([11, 11, 10]),
+    #                  ki_att_v=np.array([0.01, 0.01, 0.01]),
+    #                  kd_att_v=np.array([0., 0., 0.01]))
 
+    pid = PidControl(uav_para=uav_para,
+                    kp_pos = np.array([0.8, 0.8, 0.8]),
+                    ki_pos = np.array([0., 0., 0.0]),
+                    kd_pos = np.array([0., 0., 0.]),
+                    kp_vel = np.array([2, 2, 2]),
+                    ki_vel = np.array([0.15, 0.15, 0.01]),
+                    kd_vel = np.array([0., 0., 0.]),
+
+                    kp_att = np.array([3, 3, 2.]),
+                    ki_att = np.array([0., 0, 0]),
+                    kd_att = np.array([0., 0., 0]),
+                    kp_att_v = np.array([20, 20, 10]),
+                    ki_att_v = np.array([1, 1, 1]),
+                    kd_att_v = np.array([0., 0., 0.01]))
 
     # simulator init
     step_num = 0
@@ -147,31 +146,38 @@ def traject_track():
     ref_v = np.array([0, 0, 0, 0])
     print(quad.observe())
     # simulate begin
-    for i in range(3000):
+    for i in range(5000):
 
-        ref = np.array([2 * np.cos(np.pi / 12 * quad.ts + np.pi),
-                        2 * np.sin(np.pi / 12 * quad.ts + np.pi),
-                        0.0 * quad.ts,
-                        np.pi / 12 * quad.ts]) # + ref_v * pid.ts
+        ref = np.array([5 * np.cos(np.pi / 5 * quad.ts + np.pi),
+                        5 * np.sin(np.pi / 5 * quad.ts + np.pi),
+                        0.0 * quad.ts, 0])
+                        # np.pi / 12 * quad.ts])
 
-        ref_v = np.array([-np.pi * np.sin(np.pi / 12 * (quad.ts + pid.ts) + np.pi) * 2 / 12,
-                          np.pi * np.cos(np.pi / 12 * (quad.ts + pid.ts) + np.pi) * 2 / 12,
+        ref_v = np.array([-np.pi * np.sin(np.pi / 5 * (quad.ts + quad.uavPara.ts) + np.pi) * 5 / 5,
+                          np.pi * np.cos(np.pi / 5 * (quad.ts + quad.uavPara.ts) + np.pi) * 5 / 5,
                           0.0,
-                          np.pi / 12])  # target velocity
+                          0.0])
+        ref_a = np.array([-np.pi**2 * np.cos(np.pi / 5 * quad.ts + np.pi) * 5 / 25,
+                          -np.pi**2 * np.sin(np.pi / 5 * quad.ts + np.pi) * 5 / 25,
+                          0.0])
+        # ref_a = [0, 0, 0]
+                          # np.pi / 12])  # target velocity
         state_temp = quad.observe()
+        print(state_temp, 'state')
         state_compensate = state_temp - np.array([0, 0, 0,
                                                   ref_v[0], ref_v[1], ref_v[2],
                                                   0, 0, 0,
                                                   0, 0, ref_v[3]])
         # state_compensate = state_temp
-        action = pid.pid_control(state_compensate, ref)
+        action = pid.pid_control(state_compensate, ref + ref_v * quad.uavPara.ts, compensate=ref_a)
+        # action = quad.controller_pid(state_compensate, ref_state=ref)
         quad.step(action)
 
         err_track = np.hstack([ref[0] - state_temp[0],
                                ref[1] - state_temp[1],
                                ref[2] - state_temp[2],
                                ref[3] - state_temp[8]])
-        if i % 30 == 0:
+        if i % 20 == 0:
             gui.quadGui.target = ref[0:3]
             gui.quadGui.sim_time = quad.ts
             gui.render()
@@ -195,22 +201,28 @@ def traject_track():
     # mpl.style.use('seaborn')
     fig1 = plt.figure(2)
     plt.clf()
-    plt.subplot(4, 1, 1)
+    plt.subplot(5, 1, 1)
     plt.plot(ts, bs[t, 6] / D2R, label='roll')
     plt.plot(ts, bs[t, 7] / D2R, label='pitch')
     plt.plot(ts, bs[t, 8] / D2R, label='yaw')
     plt.ylabel('Attitude $(\circ)$', fontsize=15)
     plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
-    plt.subplot(4, 1, 2)
+    plt.subplot(5, 1, 2)
+    plt.plot(ts, bs[t, 9] / D2R, label='roll_dot')
+    plt.plot(ts, bs[t, 10] / D2R, label='pitch_dot')
+    plt.plot(ts, bs[t, 11] / D2R, label='yaw_dot')
+    plt.ylabel('Attitude_dot $(\circ)$/s', fontsize=15)
+    plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+    plt.subplot(5, 1, 3)
     plt.plot(ts, bs[t, 0], label='x')
     plt.plot(ts, bs[t, 1], label='y')
     plt.ylabel('Position (m)', fontsize=15)
     plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
-    plt.subplot(4, 1, 3)
+    plt.subplot(5, 1, 4)
     plt.plot(ts, bs[t, 2], label='z')
     plt.ylabel('Altitude $(\circ)$', fontsize=15)
     plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
-    plt.subplot(4, 1, 4)
+    plt.subplot(5, 1, 5)
     plt.plot(ts, ba[t, 0], label='f')
     plt.plot(ts, ba[t, 1] / uav_para.uavInertia[0], label='t1')
     plt.plot(ts, ba[t, 2] / uav_para.uavInertia[1], label='t2')

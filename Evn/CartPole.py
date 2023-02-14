@@ -206,13 +206,23 @@ class CartPoleEnv(object):
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
         a_43 = self.masspole * self.length * self.gravity * (self.masspole + self.masscart) / \
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
-        A = np.mat([[0, 1, 0, 0], [0, a_22, a_23, 0], [0, 0, 0, 1], [0, a_42, a_43, 0]])
+        A = np.zeros((4,4))
+        # A = np.array([[0, 1, 0, 0], [0, a_22, a_23, 0], [0, 0, 0, 1], [0, a_42, a_43, 0]])
+        A[0, 1] = 1
+        A[1, 1] = a_22
+        A[1, 2] = a_23
+        A[2, 3] = 1
+        A[3, 1] = a_42
+        A[3, 2] = a_43
 
         b_2 = (j + self.masspole * self.length**2) / \
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
         b_4 = - (self.masspole * self.length) / \
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
-        B = np.mat([0, b_2, 0, b_4])
+        B = np.zeros((4,1))
+        # B = np.array([[0], [b_2], [0], [b_4]])
+        B[1, 0] = b_2
+        B[3, 0] = b_4
 
         return A, B
 

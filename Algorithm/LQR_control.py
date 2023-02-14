@@ -21,16 +21,16 @@ def solve_DARE(A, B, Q, R):
     """
     P = Q
     mapiter = 500
-    eps = 0.01
+    eps = 0.000001
     for i in range(mapiter):
-        Pn = A.T * P * A - A.T * P * B * la.pinv(R + B.T * P * B) * B.T * P * A + Q
-        if (abs(Pn - P)).map() < eps:
+        Pn = A.T @ P @ A - (A.T @ P @ B) @ linalg.pinv(R + B.T @ P @ B) @ (B.T @ P @ A) + Q
+        if (abs(Pn - P)).max() < eps:
             P = Pn
             break
         P = Pn
     return Pn
 
-def dlqr(self, A, B, Q, R):
+def dlqr(A, B, Q, R):
     """
     :brief:         Solve the discrete time lqr controller.
                     P[k+1] = A P[k] + B u[k]
@@ -44,7 +44,30 @@ def dlqr(self, A, B, Q, R):
     """
 
     # first, try to solve the ricatti equation
-    P = self.solve_DARE(A, B, Q, R)
+    P = solve_DARE(A, B, Q, R)
+    print(P, 'P')
     # compute the LQR gain
-    K = la.pinv(B.T * P * B + R) * (B.T * P * A)
+    K = linalg.pinv(B.T @ P @ B + R) @ B.T @ P @ A
     return K
+
+def lqr(A, B, Q, R, ts):
+    """
+    :brief:         Solve the discrete time lqr controller.
+                    P[k+1] = A P[k] + B u[k]
+                    cost = sum P[k].T*Q*P[k] + u[k].T*R*u[k]
+    :param self:
+    :param A:
+    :param B:
+    :param Q:
+    :param R:
+    :return:
+    """
+    A = eye(A.shape[0]) + ts * A
+    B = ts * B
+    # first, try to solve the ricatti equation
+    P = solve_DARE(A, B, Q, R)
+    print(P, 'P')
+    # compute the LQR gain
+    K = linalg.pinv(B.T @ P @ B + R) @ B.T @ P @ A
+    return K
+

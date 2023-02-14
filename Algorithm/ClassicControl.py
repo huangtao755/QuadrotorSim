@@ -77,7 +77,7 @@ class PidControl(object):
 
         self.err = np.zeros(12)
 
-    def pid_control(self, state, ref_state):
+    def pid_control(self, state, ref_state, compensate=[0, 0, 0]):
         """
 
         :param state:
@@ -122,8 +122,9 @@ class PidControl(object):
 
         # a_pos = a_pos.clip(np.array([-30, -30, -30]), np.array([30, 30, 30]))
         a_pos[2] += self.uav_par.g  # gravity compensation in z-axis
-        a_pos[2] = max(0.01, a_pos[2])
+        a_pos[2] = max(0.001, a_pos[2])
 
+        a_pos += compensate
         " ________________attitude double loop_______________ "
         # ########attitude loop######## #
         phi = state[6]

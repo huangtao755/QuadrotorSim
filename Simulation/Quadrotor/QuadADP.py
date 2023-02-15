@@ -11,7 +11,7 @@ from Comman import MemoryStore
 from Evn.Quadrotor import QuadrotorFlyModel as Qfm
 
 D2R = Qfm.D2R
-current_path = os.path.abspath(os.path.join(os.getcwd(), ".."))
+current_path = os.path.abspath(os.path.join(os.getcwd(), "../.."))
 
 
 class QuadADP(object):

@@ -69,5 +69,5 @@ def lqr(A, B, Q, R, ts):
     print(P, 'P')
     # compute the LQR gain
     K = linalg.pinv(B.T @ P @ B + R) @ B.T @ P @ A
-    return K
+    return K, P
 

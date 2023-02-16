@@ -4,6 +4,8 @@
 import numpy as np
 import torch as t
 
+from Algorithm.LQR_control import *
+from Evn.Quadrotor import QuadrotorFlyModel
 import Evn.Quadrotor.QuadrotorFlyModel as Qfm
 
 
@@ -77,11 +79,17 @@ class PidControl(object):
 
         self.err = np.zeros(12)
 
-    def pid_control(self, state, ref_state, compensate=[0, 0, 0]):
+        self.A = None
+        self.B = None
+
+    def pid_control(self, state, ref_state,
+                    compensate=np.array([0, 0, 0]),
+                    update=True):
         """
 
         :param state:
         :param ref_state:
+        :param compensate:
         :return:
         """
         print('________________________________step%d simulation____________________________' % self.step_num)
@@ -125,6 +133,7 @@ class PidControl(object):
         a_pos[2] = max(0.001, a_pos[2])
 
         a_pos += compensate
+
         " ________________attitude double loop_______________ "
         # ########attitude loop######## #
         phi = state[6]
@@ -132,15 +141,7 @@ class PidControl(object):
         phy = state[8]
         att = np.array([phi, theta, phy])
 
-        # u1 = self.uav_par.uavM * a_pos[2] / (np.cos(phi) * np.cos(theta))
-        # print('original_u1', u1)
         u1 = self.uav_par.uavM * np.sqrt(sum(np.square(a_pos)))
-
-        # print('----------------------------------')
-        # print('phi', phi)
-        # print('theta', theta)
-        # print('phy', phy)
-        # print('__________________________________')
 
         ref_phy = ref_state[3]
         ref_phi = np.arcsin(self.uav_par.uavM * (a_pos[0] * np.sin(ref_phy) - a_pos[1] * np.cos(ref_phy)) / u1)
@@ -148,12 +149,6 @@ class PidControl(object):
         ref_theta = np.arcsin(
             self.uav_par.uavM * (a_pos[0] * np.cos(ref_phy) + a_pos[1] * np.sin(ref_phy)) / (u1 * np.cos(ref_phi)))
         ref_att = np.array([ref_phi, ref_theta, ref_phy])
-
-        # print('----------------------------------')
-        # print('ref_phi', ref_phi)
-        # print('ref_theta', ref_theta)
-        # print('ref_phy', ref_phy)
-        # print('__________________________________')
 
         err_p_att_ = ref_att - att
 
@@ -168,12 +163,6 @@ class PidControl(object):
                     + self.ki_att * self.err_i_att \
                     + self.kd_att * self.err_d_att
 
-        # print('----------------------------------')
-        # print('err_p_att', self.err_p_att)
-        # print('err_i_att', self.err_i_att)
-        # print('err_d_att', self.err_d_att)
-        # print('ref_att_v', ref_att_v)
-        # print('__________________________________')
         # ########velocity of attitude loop######## #
         att_v = state[9:12]
         err_p_att_v_ = ref_att_v - att_v
@@ -200,6 +189,31 @@ class PidControl(object):
 
         return action
 
+    def angle_matrix(self, p, q, r):
+        print(1)
+        A_22 = np.array([[0,
+                         (self.uav_par.uavInertia[1] - self.uav_par.uavInertia[2]) * r / self.uav_par.uavInertia[0],
+                         (self.uav_par.uavInertia[1] - self.uav_par.uavInertia[2]) * q / self.uav_par.uavInertia[0]],
+                        [(self.uav_par.uavInertia[2] - self.uav_par.uavInertia[0]) * r / self.uav_par.uavInertia[1],
+                         0,
+                         (self.uav_par.uavInertia[2] - self.uav_par.uavInertia[0]) * p / self.uav_par.uavInertia[1]],
+                        [(self.uav_par.uavInertia[0] - self.uav_par.uavInertia[1]) * q / self.uav_par.uavInertia[2],
+                         (self.uav_par.uavInertia[0] - self.uav_par.uavInertia[1]) * p / self.uav_par.uavInertia[2],
+                         0]])
+        print(2)
+        A = np.array(np.vstack((np.hstack((np.eye(3), np.zeros((3, 3)))),
+                               np.hstack((np.zeros((3, 3)), A_22)))))
+        print(3)
+        J = np.array([[self.uav_par.uavInertia[0], 0, 0],
+                      [0, self.uav_par.uavInertia[1], 0],
+                      [0, 0, self.uav_par.uavInertia[2]]])
+        print(J, 'j------------------------------------------------------------')
+        print(4)
+        B = np.vstack((np.zeros((3, 3)), J))
+        print(A, B)
+
+        return A, B
+
     def reset(self):
         self.step_num = 0
         " simulation state "
@@ -220,68 +234,21 @@ class PidControl(object):
         self.err_d_att_v = np.zeros(3)
 
 
-""""""
-def solve_DARE(A, B, Q, R):
-    """
-    :brief:     solve a discrete time_Algebraic Riccati equation (DARE)
-    :param A:
-    :param B:
-    :param Q:
-    :param R:
-    :return:
-    """
-    """
+pid = PidControl()
+A, B = pid.angle_matrix(p=1, q=1, r=1)
 
-    """
-    P = Q
-    mapiter = 500
-    eps = 0.000001
-    for i in range(mapiter):
-        Pn = A.T @ P @ A - (A.T @ P @ B) @ linalg.pinv(R + B.T @ P @ B) @ (B.T @ P @ A) + Q
-        if (abs(Pn - P)).max() < eps:
-            P = Pn
-            break
-        P = Pn
-    return Pn
+Q = np.zeros((6, 6))
+Q[0, 0] = 1000
+Q[1, 1] = 1000
+Q[2, 2] = 1000
+Q[3, 3] = 10
+Q[4, 4] = 10
+Q[5, 5] = 10
 
+R = np.zeros((3, 3))
+R[0, 0] = 1
+R[1, 1] = 1
+R[2, 2] = 1
 
-def dlqr(A, B, Q, R):
-    """
-    :brief:         Solve the discrete time lqr controller.
-                    P[k+1] = A P[k] + B u[k]
-                    cost = sum P[k].T*Q*P[k] + u[k].T*R*u[k]
-    :param self:
-    :param A:
-    :param B:
-    :param Q:
-    :param R:
-    :return:
-    """
-
-    # first, try to solve the ricatti equation
-    P = solve_DARE(A, B, Q, R)
-    print(P, 'P')
-    # compute the LQR gain
-    K = linalg.pinv(B.T @ P @ B + R) @ B.T @ P @ A
-    return K
-
-
-def lqr(A, B, Q, R, ts):
-    """
-    :brief:         Solve the discrete time lqr controller.
-                    P[k+1] = A P[k] + B u[k]
-                    cost = sum P[k].T*Q*P[k] + u[k].T*R*u[k]
-    :param self:
-    :param A:
-    :param B:
-    :param Q:
-    :param R:
-    :return:
-    """
-    A = eye(A.shape[0]) + ts * A
-    B = ts * B
-    # first, try to solve the ricatti equation
-    P = solve_DARE(A, B, Q, R)
-    # compute the LQR gain
-    K = linalg.pinv(B.T @ P @ B + R) @ B.T @ P @ A
-    return K, P
+K, P = lqr(A, B, Q, R, ts=0.01)
+print(K)

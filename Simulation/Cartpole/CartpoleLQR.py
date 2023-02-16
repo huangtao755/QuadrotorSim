@@ -16,11 +16,11 @@ Q = np.array([[1000, 0, 0, 0],
      [0, 0, 0, 1]])
 R = np.array([1])
 
-k = lqr(A, B, Q, R, env.tau)
-# k = np.array([-0.0000, -0.0100, -6.8420, -0.0000])
+k, p = lqr(A, B, Q, R, env.tau)
 print(k)
-
-for i in range(1000):
+# k = np.array([-0.0000, -0.0100, -6.8420, -0.0000])
+print(env.state)
+for i in range(200):
      action = float(-k@np.array(env.state).T)
      print(action)
      state, done = env.step(action)
@@ -29,3 +29,6 @@ for i in range(1000):
      time.sleep(0.01)
      if done:
         env.reset()
+
+env.fig_show(1)
+plt.show()

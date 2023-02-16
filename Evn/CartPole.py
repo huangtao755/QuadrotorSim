@@ -1,25 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import math
-from typing import Optional, Union
 
 import numpy as np
+import matplotlib.pyplot as plt
 import pygame
 from pygame import gfxdraw
+from typing import Optional, Union
 
 import gym
 from gym import spaces, logger
 from gym.utils import seeding
 
+from Comman import MemoryStore
+
+
+D2R = np.pi / 180
+current_path = os.path.abspath(os.path.join(os.getcwd(), "../.."))
 
 class CartPoleEnv(object):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 50}
 
-    def __init__(self):
+    def __init__(self, name='evn'):
+        self.name = name
+
         self.gravity = 9.8
         self.masscart = 1.0
-        self.masspole = 0.1
+        self.masspole = 3
 
         self.masscart = 0.5
         self.masspole = 0.2
@@ -62,8 +71,11 @@ class CartPoleEnv(object):
         self.state = None
 
         self.steps_beyond_done = None
+        self.record = MemoryStore.DataRecord()
+        self.record.clear()
+        self.record_flag = False
 
-    def step(self, action):
+    def step(self, action, record=True):
         # err_msg = f"{action!r} ({type(action)}) invalid"
         # assert self.action_space.contains(action), err_msg
         assert self.state is not None, "Call reset before using step method."
@@ -103,15 +115,22 @@ class CartPoleEnv(object):
             or theta > self.theta_threshold_radians
         )
 
+        if record:
+            self.record.buffer_append((self.state, action))
         return np.array(self.state, dtype=np.float32), done
 
     def reset(
         self,
         *,
-        return_info: bool = False,
+        init_state=None,
+        return_info: bool = False
     ):
-        self.state = np.random.uniform(low=-0.5, high=0.5, size=(4,))
-        self.steps_beyond_done = None
+        if init_state is None:
+            self.state = np.random.uniform(low=-0.5, high=0.5, size=(4,))
+            self.steps_beyond_done = None
+        else:
+            self.state = init_state
+
         if not return_info:
             return np.array(self.state, dtype=np.float32)
         else:
@@ -206,7 +225,7 @@ class CartPoleEnv(object):
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
         a_43 = self.masspole * self.length * self.gravity * (self.masspole + self.masscart) / \
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
-        A = np.zeros((4,4))
+        A = np.zeros((4, 4))
         # A = np.array([[0, 1, 0, 0], [0, a_22, a_23, 0], [0, 0, 0, 1], [0, a_42, a_43, 0]])
         A[0, 1] = 1
         A[1, 1] = a_22
@@ -219,8 +238,7 @@ class CartPoleEnv(object):
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
         b_4 = - (self.masspole * self.length) / \
             (j * self.total_mass + self.masscart * self.masspole * self.length**2)
-        B = np.zeros((4,1))
-        # B = np.array([[0], [b_2], [0], [b_4]])
+        B = np.zeros((4, 1))
         B[1, 0] = b_2
         B[3, 0] = b_4
 
@@ -230,3 +248,59 @@ class CartPoleEnv(object):
         if self.screen is not None:
             pygame.quit()
             self.isopen = False
+
+    def data_save(self, reward=None):
+        """
+
+        :return:
+        """
+        data = self.record.get_episode_buffer()
+        state_data = data[0]
+        action_data = data[1]
+
+        self.record.save_data(path=current_path + '//DataSave//CartPole', data_name=str(self.name + '_state'),
+                              data=state_data)
+        self.record.save_data(path=current_path + '//DataSave//CartPole', data_name=str(self.name + '_action'),
+                              data=action_data)
+
+    def fig_show(self, i=1):
+        """
+
+        :param i:
+        :return:
+        """
+        if self.record_flag is False:
+            self.record.episode_append()
+            self.data_save()
+
+        data = self.record.get_episode_buffer()
+        bs = data[0]
+        ba = data[1]
+        t = range(0, self.record.count)
+        ts = np.array(t) * self.tau
+
+        self.fig1 = plt.figure(int(1+i**2))
+        plt.clf()
+        plt.subplot(4, 1, 1)
+        plt.plot(ts, bs[t, 0], label='x')
+        plt.ylabel('Position (m)', fontsize=15)
+        plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+        plt.subplot(4, 1, 2)
+        plt.plot(ts, bs[t, 1], label='x')
+        plt.ylabel('Velocity (m/s)', fontsize=15)
+        plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+        plt.subplot(4, 1, 3)
+        plt.plot(ts, bs[t, 2], label='z')
+        plt.ylabel('Angle $(\circ)$', fontsize=15)
+        plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+        plt.subplot(4, 1, 4)
+        plt.plot(ts, bs[t, 3], label='z')
+        plt.ylabel('Angle_v $(\circ)$/s', fontsize=15)
+        plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+
+        self.fig2 = plt.figure((2+i**2))
+        plt.clf()
+        plt.plot(ts, ba)
+        plt.ylabel('u', fontsize=15)
+        plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+        # plt.show()

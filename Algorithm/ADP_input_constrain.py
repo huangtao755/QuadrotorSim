@@ -1,10 +1,13 @@
-#!/usr/bin/env python3
+
+ #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import numpy as np
 import torch as t
 from torch.autograd import Variable
 
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 t.manual_seed(5)
 
@@ -21,16 +24,26 @@ Fre_V1_paras = 5
 class Model(t.nn.Module):
     def __init__(self, input_dim, output_dim):
         super(Model, self).__init__()
-        self.lay1 = t.nn.Linear(input_dim, 64, bias=True)
-        self.lay1.weight.data.normal_(0, 0.1)
-        self.lay2 = t.nn.Linear(64, output_dim, bias=True)
-        self.lay2.weight.data.normal_(0, 0.1)
+        self.layer1 = np.zeros((32, input_dim))
+        self.layer1[0:8, 0] = 1
+        self.layer1[8:16, 1] = 1
+        self.layer1[16:24, 2] = 1
+        self.layer1[24:32, 3] = 1
+        self.weight_matrix = np.random.random(size=(output_dim, 32))
 
     def forward(self, x):
-        layer1 = self.lay1(x)
-        layer1 = t.nn.functional.elu(layer1)
-        output = self.lay2(layer1)
+        x = t.nn.functional.tanh(t.tensor(x))
+        print(x.shape, '////////////////')
+        x = t.tensor(self.layer1) @ x
+        output = t.tensor(self.weight_matrix)@x
         return output
+
+    def train(self, x, y):
+        x = np.array([x])
+        y = np.array([y])
+        self.weight_matrix = np.linalg.pinv(x@x.T) @ x @ y.T
+        self.weight_matrix = (x @ x.T)**(-1) @ x @ y.T
+        return self.weight_matrix
 
 
 ############################################################################################################
@@ -153,3 +166,39 @@ class ADPSingleNet(object):
 
     def update_network_parameters(self):
         pass
+
+
+if __name__ == "__main__":
+    # fig = plt.figure(figsize=(10, 5))
+    # plt.rcParams['axes.unicode_minus'] = False
+    # plt.title(" y = 10 * sin(x)")  # 标题
+    # plt.xlabel("X轴")  # X轴标签
+    # plt.ylabel("Y轴")  # Y轴标签
+    # x, y = [], []
+    # ani = FuncAnimation(fig, test,
+    #                     frames=np.arange(0, 3, 10),
+    #                     interval=5, blit=False, repeat=False)
+    # plt.show()
+    net = Model(4, 1)
+
+    a = np.arange(0, 3, 0.1)
+    b = a**2+np.sin(a)
+    x1 = a
+    x2 = a ** 0.2
+    x3 = a ** 0.6
+    x4 = a ** 2
+
+    X =np.hstack((x1, x2, x3, x4))
+
+
+    print(a)
+    print(b)
+
+    matrix = net.train(X, np.array(b))
+    print(matrix)
+    Y = net.forward(X)
+
+
+
+
+

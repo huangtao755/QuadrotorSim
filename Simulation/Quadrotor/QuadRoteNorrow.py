@@ -1,6 +1,8 @@
 """
 introduction
 """
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -63,13 +65,16 @@ def AttitudeControl():
     ref = np.array([10, 10, -10, 0])
     print(quad.observe(), 'observe')
     # simulate begin
-
+    gui.render()
+    time.sleep(20)
+    # 水平速度控制
     for i in range(400):
+        print('========================================================================')
         ref_v = [0, 5, 0]
         state_temp = quad.observe()
         action = v_pid.pid_control(state=state_temp, ref_vel=ref_v)
         quad.step(action)
-        if i % 5 == 0:
+        if i % 2 == 0:
             gui.quadGui.target = ref[0:3]
             gui.quadGui.sim_time = quad.ts
             gui.render()
@@ -78,94 +83,13 @@ def AttitudeControl():
         if state_temp[4] >= 5:
             break
 
+    # 姿态控制
     for i in range(100):
         state_temp = quad.observe()
         kp = 3
         kd = 0.5
         u = kp * (0 - state_temp[6]) + kd * (-state_temp[9])
         action = [9.8 * uav_para.uavM + abs(u), u, 0, 0]
-        quad.step(action)
-        if i % 5 == 0:
-            gui.quadGui.target = ref[0:3]
-            gui.quadGui.sim_time = quad.ts
-            gui.render()
-        record.buffer_append((state_temp, action))
-        step_num += 1
-
-    for i in range(200):
-        state_temp = quad.observe()
-        # action = pid.pid_control(state_temp, ref)
-        action = [(30+9.8) * uav_para.uavM, 0, 0, 0]
-        quad.step(action)
-        if i % 5 == 0:
-            gui.quadGui.target = ref[0:3]
-            gui.quadGui.sim_time = quad.ts
-            gui.render()
-        record.buffer_append((state_temp, action))
-        step_num += 1
-        if state_temp[5] >= 5:
-            break
-
-    for i in range(20):
-        state_temp = quad.observe()
-        # action = pid.pid_control(state_temp, ref)
-        action = [abs(np.pi/5), 0, -np.pi/5, 0]
-        quad.step(action)
-        if i % 1 == 0:
-            gui.quadGui.target = ref[0:3]
-            gui.quadGui.sim_time = quad.ts
-            gui.render()
-        record.buffer_append((state_temp, action))
-        step_num += 1
-
-    for i in range(100):
-        state_temp = quad.observe()
-        # action = pid.pid_control(state_temp, ref)
-        action = [0, 0, 0, 0]
-
-        if (-95 * D2R) < state_temp[7] < (-70 * D2R):
-            kp = 1.8
-            kd = 0.5
-            u = kp * (-90 * D2R - state_temp[7]) + kd * (-state_temp[10])
-            u = 15 * torch.tanh(torch.tensor(u/uav_para.uavM/15)) * uav_para.uavM
-            u = max(u, 0)
-
-            action = [abs(u), 0, u, 0]
-            print(action)
-
-        quad.step(action)
-        if i % 1 == 0:
-            gui.quadGui.target = ref[0:3]
-            gui.quadGui.sim_time = quad.ts
-            gui.render()
-        record.buffer_append((state_temp, action))
-        step_num += 1
-
-    # for i in range(10):
-    #     state_temp = quad.observe()
-    #     # action = pid.pid_control(state_temp, ref)
-    #     action = [abs(np.pi/5), 0, np.pi/5, 0]
-    #     quad.step(action)
-    #     if i % 2 == 0:
-    #         gui.quadGui.target = ref[0:3]
-    #         gui.quadGui.sim_time = quad.ts
-    #         gui.render()
-    #     record.buffer_append((state_temp, action))
-    #     step_num += 1
-
-    for i in range(100):
-        state_temp = quad.observe()
-        # action = pid.pid_control(state_temp, ref)
-        action = [0, 0, 0, 0]
-        kp = 1.8
-        kd = 0.5
-        u = kp * (state_temp[7]) + kd * (-state_temp[10])
-        u = 15 * torch.tanh(torch.tensor(u/uav_para.uavM/15)) * uav_para.uavM
-        u = max(u, 0)
-
-        action = [abs(u), 0, u, 0]
-        print(action)
-
         quad.step(action)
         if i % 2 == 0:
             gui.quadGui.target = ref[0:3]
@@ -174,6 +98,113 @@ def AttitudeControl():
         record.buffer_append((state_temp, action))
         step_num += 1
 
+    # 垂直速度控制
+    for i in range(200):
+        state_temp = quad.observe()
+        # action = pid.pid_control(state_temp, ref)
+        action = [(30+9.8) * uav_para.uavM, 0, 0, 0]
+        quad.step(action)
+        if i % 2 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
+        if state_temp[5] >= 8:
+            break
+
+    # 全速转体
+    for i in range(15):
+        state_temp = quad.observe()
+        # action = pid.pid_control(state_temp, ref)
+        action = [abs(np.pi/3), 0, -np.pi/3, 0]
+        quad.step(action)
+        if i % 1 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
+
+    # pid转体
+    for i in range(80):
+        state_temp = quad.observe()
+        # action = pid.pid_control(state_temp, ref)
+        action = [0, 0, 0, 0]
+
+        if (-100 * D2R) < state_temp[7] < (-60 * D2R):
+            kp = 2
+            kd = 0.5
+            u = kp * (-90 * D2R - state_temp[7]) + kd * (-state_temp[10])
+            u = 25 * torch.tanh(torch.tensor(u/uav_para.uavM/25)) * uav_para.uavM
+            u = max(u, 0)
+
+            action = [abs(u), 0, u, 0]
+            print(action)
+        quad.step(action)
+        if i % 1 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
+
+    # 穿越
+    for i in range(20):
+        state_temp = quad.observe()
+        action = [0, 0, 0, 0]
+        quad.step(action)
+        if i % 1 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
+
+    for i in range(15):
+        state_temp = quad.observe()
+        # action = pid.pid_control(state_temp, ref)
+        action = [abs(np.pi/3), 0, np.pi/3, 0]
+        quad.step(action)
+        if i % 1 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
+
+    for i in range(30):
+        state_temp = quad.observe()
+        # action = pid.pid_control(state_temp, ref)
+        kp = 2
+        kd = 0.4
+        u = kp * (-state_temp[7]) + kd * (-state_temp[10])
+        print(u, 'u')
+        u = 15 * torch.tanh(torch.tensor(abs(u)/uav_para.uavM/15)) * uav_para.uavM*abs(u)/u
+
+        action = [abs(u), 0, u, 0]
+        print(action, 'actiopn')
+
+        quad.step(action)
+        if i % 1 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
+
+    for i in range(100):
+        print('========================================================================')
+        ref_v = [0, 5, max(0, 10 - i * 0.12)]
+        state_temp = quad.observe()
+        action = v_pid.pid_control(state=state_temp, ref_vel=ref_v)
+        quad.step(action)
+        if i % 2 == 0:
+            gui.quadGui.target = ref[0:3]
+            gui.quadGui.sim_time = quad.ts
+            gui.render()
+        record.buffer_append((state_temp, action))
+        step_num += 1
 
 
     record.episode_append()

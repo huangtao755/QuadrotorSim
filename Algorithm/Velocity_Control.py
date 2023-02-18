@@ -199,6 +199,71 @@ class VelocityControl(object):
 
         return action
 
+    def attitude_control(self, state, ref_att, g_compensate=False):
+        """
+
+        :param state:
+        :param ref_attitude:
+        :param g_compensate:
+        :return:
+        """
+        # ########attitude loop######## #
+        phi = state[6]
+        theta = state[7]
+        phy = state[8]
+        att = np.array([phi, theta, phy])
+        a_pos = [0, 0, 0]
+        if g_compensate:
+            a_pos[2] = self.uav_par.g
+        u1 = self.uav_par.uavM * np.sqrt(sum(np.square(a_pos)))
+
+        ref_phy = ref_att[2]
+        ref_phi = ref_att[0]
+        ref_theta = ref_att[1]
+
+        # print('----------------------------------')
+        # print('ref_phi', ref_phi)
+        # print('ref_theta', ref_theta)
+        # print('ref_phy', ref_phy)
+        # print('__________________________________')
+
+        err_p_att_ = ref_att - att
+
+        if self.step_num == 0:
+            self.err_d_att = np.zeros(3)
+        else:
+            self.err_d_att = (err_p_att_ - self.err_p_att) / self.ts
+        self.err_p_att = err_p_att_
+        self.err_i_att += self.err_p_att * self.ts
+
+        ref_att_v = self.kp_att * self.err_p_att \
+                    + self.ki_att * self.err_i_att \
+                    + self.kd_att * self.err_d_att
+
+        # ########velocity of attitude loop######## #
+        att_v = state[9:12]
+        err_p_att_v_ = ref_att_v - att_v
+
+        if self.step_num == 0:
+            self.err_d_att_v = 0
+        else:
+            self.err_d_att_v = (err_p_att_v_ - self.err_p_att_v) / self.ts
+        self.err_p_att_v = err_p_att_v_
+        self.err_i_att_v += self.err_p_att_v * self.ts
+
+        a_att = self.kp_att_v * self.err_p_att_v \
+                + self.ki_att_v * self.err_i_att_v \
+                + self.kd_att_v * self.err_d_att_v
+
+        a_att = np.array(20 * t.tanh(t.tensor(a_att / 20)))
+
+        u = a_att * self.uav_par.uavInertia
+        u1 = max(u1, np.sqrt(np.linalg.norm(u)))
+        action = np.array([u1, u[0], u[1], u[2]])
+        self.step_num += 1
+
+        return action
+
     def reset(self):
         self.step_num = 0
         " simulation state "

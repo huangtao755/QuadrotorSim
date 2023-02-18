@@ -48,7 +48,7 @@ def point_track():
     ref = np.array([10, 10, -10, 0])
     print(quad.observe(), 'observe')
     # simulate begin
-    for i in range(1300):
+    for i in range(1000):
         state_temp = quad.observe()
         action = pid.pid_control(state_temp, ref)
         quad.step(action)
@@ -110,20 +110,34 @@ def traject_track():
     gui = Qgui.QuadrotorFlyGui([quad])
 
     # init controller
-    # pid = PidControl(uav_para=uav_para,
-    #                  kp_pos=np.array([0.5, 0.5, 0.5]),
-    #                  ki_pos=np.array([0, 0., 0.0]),
-    #                  kd_pos=np.array([0.1, 0.1, 0.1]),
-    #                  kp_vel=np.array([1.5, 1.5, 1.5]),
-    #                  ki_vel=np.array([0.01, 0.01, 0.01]),
-    #                  kd_vel=np.array([0., 0., 0.]),
-    #
-    #                  kp_att=np.array([3., 3., 3.]),
-    #                  ki_att=np.array([0., 0, 0]),
-    #                  kd_att=np.array([0, 0, 0]),
-    #                  kp_att_v=np.array([11, 11, 10]),
-    #                  ki_att_v=np.array([0.01, 0.01, 0.01]),
-    #                  kd_att_v=np.array([0., 0., 0.01]))
+    pid = PidControl(uav_para=uav_para,
+                     kp_pos=np.array([0.5, 0.5, 0.5]),
+                     ki_pos=np.array([0, 0., 0.0]),
+                     kd_pos=np.array([0.1, 0.1, 0.1]),
+                     kp_vel=np.array([1.5, 1.5, 1.5]),
+                     ki_vel=np.array([0.01, 0.01, 0.01]),
+                     kd_vel=np.array([0., 0., 0.]),
+
+                     kp_att=np.array([3., 3., 3.]),
+                     ki_att=np.array([0., 0, 0]),
+                     kd_att=np.array([0, 0, 0]),
+                     kp_att_v=np.array([11, 11, 10]),
+                     ki_att_v=np.array([0.01, 0.01, 0.01]),
+                     kd_att_v=np.array([0., 0., 0.01]))
+    pid = PidControl(uav_para=uav_para,
+                    kp_pos = np.array([0.6, 0.6, 0.6]),
+                    ki_pos = np.array([0., 0., 0.0]),
+                    kd_pos = np.array([0., 0., 0.]),
+                    kp_vel = np.array([1.5, 1.5, 1.5]),
+                    ki_vel = np.array([0.15, 0.15, 0.1]),
+                    kd_vel = np.array([0., 0., 0.]),
+
+                    kp_att = np.array([3, 3, 3.]),
+                    ki_att = np.array([0., 0, 0]),
+                    kd_att = np.array([0., 0., 0]),
+                    kp_att_v = np.array([13, 13, 13]),
+                    ki_att_v = np.array([0.01, 0.01, 0.01]),
+                    kd_att_v = np.array([0., 0., 0.01]))
 
     pid = PidControl(uav_para=uav_para,
                     kp_pos = np.array([0.8, 0.8, 0.8]),
@@ -140,6 +154,7 @@ def traject_track():
                     ki_att_v = np.array([1, 1, 1]),
                     kd_att_v = np.array([0., 0., 0.01]))
 
+
     # simulator init
     step_num = 0
     ref = np.array([15, -15, -15, 0])
@@ -149,19 +164,19 @@ def traject_track():
     for i in range(5000):
 
         ref = np.array([5 * np.cos(np.pi / 5 * quad.ts + np.pi),
-                        5 * np.sin(np.pi / 5 * quad.ts + np.pi),
+                        3 * np.sin(np.pi / 5 * quad.ts + np.pi),
                         0.0 * quad.ts, 0])
                         # np.pi / 12 * quad.ts])
 
-        ref_v = np.array([-np.pi * np.sin(np.pi / 5 * (quad.ts + quad.uavPara.ts) + np.pi) * 5 / 5,
-                          np.pi * np.cos(np.pi / 5 * (quad.ts + quad.uavPara.ts) + np.pi) * 5 / 5,
+        ref_v = np.array([-np.pi * np.sin(np.pi / 5 * (quad.ts + quad.uavPara.ts * 0) + np.pi) * 5 / 5,
+                          np.pi * np.cos(np.pi / 5 * (quad.ts + quad.uavPara.ts * 0) + np.pi) * 3 / 5,
                           0.0,
                           0.0])
+                        # np.pi / 12])  # target velocity
         ref_a = np.array([-np.pi**2 * np.cos(np.pi / 5 * quad.ts + np.pi) * 5 / 25,
-                          -np.pi**2 * np.sin(np.pi / 5 * quad.ts + np.pi) * 5 / 25,
+                          -np.pi**2 * np.sin(np.pi / 5 * quad.ts + np.pi) * 3 / 25,
                           0.0])
-        # ref_a = [0, 0, 0]
-                          # np.pi / 12])  # target velocity
+
         state_temp = quad.observe()
         print(state_temp, 'state')
         state_compensate = state_temp - np.array([0, 0, 0,

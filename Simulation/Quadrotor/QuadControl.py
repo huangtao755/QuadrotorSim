@@ -58,10 +58,10 @@ class QuadControl(object):
                          ki_vel=np.array([0.15, 0.15, 0.1]),
                          kd_vel=np.array([0., 0., 0.]),
 
-                         kp_att=np.array([3, 3, 2.]),
+                         kp_att=np.array([3, 3, 3.]),
                          ki_att=np.array([0., 0, 0]),
                          kd_att=np.array([0., 0., 0]),
-                         kp_att_v=np.array([13, 13, 10]),
+                         kp_att_v=np.array([13, 13, 13]),
                          ki_att_v=np.array([0.01, 0.01, 0.01]),
                          kd_att_v=np.array([0., 0., 0.01]))
 

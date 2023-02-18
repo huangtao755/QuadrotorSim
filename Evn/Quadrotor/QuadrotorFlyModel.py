@@ -457,6 +457,7 @@ class QuadModel(object):
     #     return ob, reward, finish_flag
 
     def step(self, action: 'int > 0'):
+        print(self.__ts)
 
         self.__ts += self.uavPara.ts
         # 1.1 Actuator model, calculate the thrust and torque

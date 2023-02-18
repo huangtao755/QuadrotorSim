@@ -22,7 +22,7 @@ def solve_DARE(A, B, Q, R):
     P = Q
     mapiter = 500
     eps = 0.000001
-    print(A.T @ P @ A)
+    print(A.T @ P @ A, '===========================-------------------------')
     print(A.T @ P @ B)
     print(R + B.T @ P @ B)
     for i in range(mapiter):
@@ -48,7 +48,6 @@ def dlqr(A, B, Q, R):
 
     # first, try to solve the ricatti equation
     P = solve_DARE(A, B, Q, R)
-    print(P, 'P')
     # compute the LQR gain
     K = linalg.pinv(B.T @ P @ B + R) @ B.T @ P @ A
     return K

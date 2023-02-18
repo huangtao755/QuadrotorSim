@@ -84,7 +84,7 @@ class PidControl(object):
 
     def pid_control(self, state, ref_state,
                     compensate=np.array([0, 0, 0]),
-                    update=True):
+                    update_A=False):
         """
 
         :param state:
@@ -141,7 +141,10 @@ class PidControl(object):
         phy = state[8]
         att = np.array([phi, theta, phy])
 
-        u1 = self.uav_par.uavM * np.sqrt(sum(np.square(a_pos)))
+
+
+        u1 = self.uav_par.uavM * \
+             np.sqrt(sum(np.square(a_pos)))
 
         ref_phy = ref_state[3]
         ref_phi = np.arcsin(self.uav_par.uavM * (a_pos[0] * np.sin(ref_phy) - a_pos[1] * np.cos(ref_phy)) / u1)
@@ -149,6 +152,9 @@ class PidControl(object):
         ref_theta = np.arcsin(
             self.uav_par.uavM * (a_pos[0] * np.cos(ref_phy) + a_pos[1] * np.sin(ref_phy)) / (u1 * np.cos(ref_phi)))
         ref_att = np.array([ref_phi, ref_theta, ref_phy])
+
+        if update_A:
+            self.A, self.B = self.angle_matrix(p=phi, q=theta, r=phy)
 
         err_p_att_ = ref_att - att
 
@@ -190,7 +196,6 @@ class PidControl(object):
         return action
 
     def angle_matrix(self, p, q, r):
-        print(1)
         A_22 = np.array([[0,
                          (self.uav_par.uavInertia[1] - self.uav_par.uavInertia[2]) * r / self.uav_par.uavInertia[0],
                          (self.uav_par.uavInertia[1] - self.uav_par.uavInertia[2]) * q / self.uav_par.uavInertia[0]],
@@ -200,17 +205,15 @@ class PidControl(object):
                         [(self.uav_par.uavInertia[0] - self.uav_par.uavInertia[1]) * q / self.uav_par.uavInertia[2],
                          (self.uav_par.uavInertia[0] - self.uav_par.uavInertia[1]) * p / self.uav_par.uavInertia[2],
                          0]])
-        print(2)
+
         A = np.array(np.vstack((np.hstack((np.eye(3), np.zeros((3, 3)))),
                                np.hstack((np.zeros((3, 3)), A_22)))))
-        print(3)
+
         J = np.array([[self.uav_par.uavInertia[0], 0, 0],
                       [0, self.uav_par.uavInertia[1], 0],
                       [0, 0, self.uav_par.uavInertia[2]]])
-        print(J, 'j------------------------------------------------------------')
-        print(4)
+
         B = np.vstack((np.zeros((3, 3)), J))
-        print(A, B)
 
         return A, B
 

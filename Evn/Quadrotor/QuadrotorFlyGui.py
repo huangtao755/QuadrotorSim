@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as axes3d
 import numpy as np
 
-from Comman import CommonFunctions as Cf
+from Comman import Utils as Cf
 from Comman import MemoryStore
 from Evn.Quadrotor import QuadrotorFlyModel as Qfm
 
@@ -112,8 +112,6 @@ class QuadrotorFlyGuiUav(object):
         y1 = (0 * x1 * z1+5)
         self.ax.plot_surface(x1, y1, z1, rstride=1, cstride=1, linewidth=0, antialiased=True)
 
-
-
     def draw_grid(self):
         x = np.arange(-4, 5, 1)
         y = np.arange(-4, 5, 1)
@@ -127,17 +125,17 @@ class QuadrotorFlyGuiUav(object):
             posz = [0, 0]
             figure = self.ax.plot(posx, posy, posz, 'y--')
 
-        x1 = np.array([0.2, 0.12, -0.12, -0.2])
-        z1 = np.array([4.6, 5, 5.4, 5.8])
-        for ik in range(len(x1)):
-            posx = [-0.2, 0.2]
-            posy = [5.8, 5.8]
-            posz = [z1[ik], z1[ik]]
-            figure = self.ax.plot(posx, posy, posz, 'r--')
-            posx = [x1[ik], x1[ik]]
-            posy = [5.8, 5.8]
-            posz = [4.6, 5.8]
-            figure = self.ax.plot(posx, posy, posz, 'r--')
+        # x1 = np.array([0.2, 0.12, -0.12, -0.2])
+        # z1 = np.array([4.6, 5, 5.4, 5.8])
+        # for ik in range(len(x1)):
+        #     posx = [-0.2, 0.2]
+        #     posy = [5.8, 5.8]
+        #     posz = [z1[ik], z1[ik]]
+        #     figure = self.ax.plot(posx, posy, posz, 'r--')
+        #     posx = [x1[ik], x1[ik]]
+        #     posy = [5.8, 5.8]
+        #     posz = [4.6, 5.8]
+        #     figure = self.ax.plot(posx, posy, posz, 'r--')
 
 
     def render(self):

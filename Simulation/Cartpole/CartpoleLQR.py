@@ -20,13 +20,15 @@ k, p = lqr(A, B, Q, R, env.tau)
 print(k)
 # k = np.array([-0.0000, -0.0100, -6.8420, -0.0000])
 print(env.state)
+env.render()
+time.sleep(5)
 for i in range(200):
      action = float(-k@np.array(env.state).T)
      print(action)
      state, done = env.step(action)
      env.render()
      # print(action, type(action))
-     time.sleep(0.01)
+     time.sleep(0.05)
      if done:
         env.reset()
 

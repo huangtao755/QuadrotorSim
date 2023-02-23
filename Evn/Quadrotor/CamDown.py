@@ -228,7 +228,7 @@ if __name__ == '__main__':
         import matplotlib.pyplot as plt
         # import matplotlib as mpl
         from QuadrotorFlyModel import QuadModel, QuadSimOpt, QuadParas, StructureType, SimInitType
-        from Comman import MemoryStore, CommonFunctions as Cf
+        from Comman import MemoryStore, Utils as Cf
 
         D2R = np.pi / 180
 

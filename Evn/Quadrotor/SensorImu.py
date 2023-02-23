@@ -27,7 +27,7 @@ Created on  六月 21 10:33 2019
 
 import numpy as np
 
-from Comman import CommonFunctions as Cf
+from Comman import Utils as Cf
 # import QuadrotorFly.SensorBase as SensorBase
 from Evn.Quadrotor.SensorBase import SensorBase, SensorType
 

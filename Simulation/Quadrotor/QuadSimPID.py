@@ -1,6 +1,8 @@
 """
 introduction
 """
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -45,7 +47,7 @@ def point_track():
 
     # simulator init
     step_num = 0
-    ref = np.array([10, 10, -10, 0])
+    ref = np.array([10, 10, -10, np.pi/2])
     print(quad.observe(), 'observe')
     # simulate begin
     for i in range(1000):
@@ -157,23 +159,21 @@ def traject_track():
 
     # simulator init
     step_num = 0
-    ref = np.array([15, -15, -15, 0])
-    ref_v = np.array([0, 0, 0, 0])
     print(quad.observe())
     # simulate begin
     for i in range(5000):
 
-        ref = np.array([5 * np.cos(np.pi / 5 * quad.ts + np.pi),
+        ref = np.array([3 * np.cos(np.pi / 5 * quad.ts + np.pi),
                         3 * np.sin(np.pi / 5 * quad.ts + np.pi),
                         0.0 * quad.ts, 0])
                         # np.pi / 12 * quad.ts])
 
-        ref_v = np.array([-np.pi * np.sin(np.pi / 5 * (quad.ts + quad.uavPara.ts * 0) + np.pi) * 5 / 5,
+        ref_v = np.array([-np.pi * np.sin(np.pi / 5 * (quad.ts + quad.uavPara.ts * 0) + np.pi) * 3 / 5,
                           np.pi * np.cos(np.pi / 5 * (quad.ts + quad.uavPara.ts * 0) + np.pi) * 3 / 5,
                           0.0,
                           0.0])
                         # np.pi / 12])  # target velocity
-        ref_a = np.array([-np.pi**2 * np.cos(np.pi / 5 * quad.ts + np.pi) * 5 / 25,
+        ref_a = np.array([-np.pi**2 * np.cos(np.pi / 5 * quad.ts + np.pi) * 3 / 25,
                           -np.pi**2 * np.sin(np.pi / 5 * quad.ts + np.pi) * 3 / 25,
                           0.0])
 
@@ -266,4 +266,4 @@ def traject_track():
 
 
 if __name__ == "__main__":
-    traject_track()
+    point_track()

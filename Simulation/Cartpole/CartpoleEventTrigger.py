@@ -56,9 +56,8 @@ for i in range(2000):
 
      if Trigger.trigger_condition(np.array(xk), np.array(envk.state)):
           print('ok')
-          if i < 500 or i % 2 ==0:
-               xk = envk.state
-               actionk = action
+          xk = envk.state
+          actionk = action
      statek, donek = envk.step(actionk)
      envk.render()
 

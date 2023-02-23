@@ -353,7 +353,7 @@ class QuadModel(object):
             return np.hstack([self.position, self.velocity, self.attitude, self.angular])
 
     @property
-    def state(self):
+    def  state(self):
         return np.hstack([self.position, self.velocity, self.attitude, self.angular])
 
     def is_finished(self):

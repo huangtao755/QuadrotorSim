@@ -234,7 +234,7 @@ class QuadModel(object):
         # 世界系到载体系坐标变化
         self.rotor_mat = np.zeros((3, 3))
 
-        self.gain_mat_plus = np.linalg.inv(np.narray([[self.uavPara.rotorCt, self.uavPara.rotorCt,
+        self.gain_mat_plus = np.linalg.inv(np.array([[self.uavPara.rotorCt, self.uavPara.rotorCt,
                                                      self.uavPara.rotorCt, self.uavPara.rotorCt],
                                                      [0, self.uavPara.uavL*self.uavPara.rotorCt,
                                                      0, -self.uavPara.uavL*self.uavPara.rotorCt],
@@ -243,7 +243,7 @@ class QuadModel(object):
                                                      [self.uavPara.rotorCm, -self.uavPara.rotorCm,
                                                      self.uavPara.rotorCm, -self.uavPara.rotorCm]]))
 
-        self.gain_mat_x = np.linalg.inv(np.narray([[self.uavPara.rotorCt,
+        self.gain_mat_x = np.linalg.inv(np.array([[self.uavPara.rotorCt,
                                                   self.uavPara.rotorCt,
                                                   self.uavPara.rotorCt,
                                                   self.uavPara.rotorCt],
@@ -343,7 +343,7 @@ class QuadModel(object):
             0       1       2       3       4       5
             p_x     p_y     p_z     v_x     v_y     v_z
             6       7       8       9       10      11
-            roll    pitch   yaw     v_roll  v_pitch v_yaw
+            roll    pitch   yaw     p       q       r
         :param action: u1(sum of thrust), u2(torque for roll), u3(pitch), u4(yaw)
         :return: derivatives of state inclfrom bokeh.plotting import figure
         """
@@ -379,29 +379,67 @@ class QuadModel(object):
         #   The signals of this equation should be same with toque for yaw
 
         # ############# 计算机体系下姿态速度
-        self.rotor_mat = np.array([1, att_sin[1]*att_sin[0]/att_cos[1], att_sin[1]*att_cos[0]/att_cos[1]],
-                                  [0, att_cos[0], -att_sin[0]],
-                                  [0, att_sin[0]/att_cos[1], att_cos[0]/att_cos[1]])
-        state_body = (np.linalg.inv(self.rotor_mat) @ state[9:12].T).reshape(3)             # 获取机体角速度
+        dot_state[6:9] = self.rotor_mat @ state[9:12]        # 获取世界角速度
 
-        # ############# 计算集体角加速度
+        # ############# 计算机体系下角加速度
 
         dot_state[9:12] = np.array([
-            state_body[1] * state[2] * (para.uavInertia[1] - para.uavInertia[2]) / para.uavInertia[0]
-            - para.rotorInertia / para.uavInertia[0] * state[2] * rotor_rate_sum
-            + action[1] / para.uavInertia[0] - para.bodyKa/para.uavInertia[0]*state_body[0],
+            action[1] / para.uavInertia[0]
+            + state[10] * state[11] * (para.uavInertia[1] - para.uavInertia[2]) / para.uavInertia[0]
+            - para.rotorInertia / para.uavInertia[0] * state[10] * rotor_rate_sum
+            - para.bodyKa / para.uavInertia[0] * state[9],
 
-            state_body[0] * state_body[2] * (para.uavInertia[2] - para.uavInertia[0]) / para.uavInertia[1]
-            + para.rotorInertia / para.uavInertia[1] * state_body[0] * rotor_rate_sum
-            + action[2] / para.uavInertia[1] - para.bodyKa/para.uavInertia[1]*state_body[1],
+            action[2] / para.uavInertia[1]
+            + state[9] * state[11] * (para.uavInertia[2] - para.uavInertia[0]) / para.uavInertia[1]
+            + para.rotorInertia / para.uavInertia[1] * state[9] * rotor_rate_sum
+            - para.bodyKa / para.uavInertia[1] * state[10],
 
-            state_body[0] * state_body[1] * (para.uavInertia[0] - para.uavInertia[1]) / para.uavInertia[2]
-            + action[3] / para.uavInertia[2] - para.bodyKa/para.uavInertia[2]*state_body[2]
+            + action[3] / para.uavInertia[2]
+            + state[9] * state[10] * (para.uavInertia[0] - para.uavInertia[1]) / para.uavInertia[2]
+            - para.bodyKa / para.uavInertia[2] * state[11]
         ]) + noise_att
 
-        dot_state[6:9] = (state_body @ self.rotor_mat.T).reshape(3)
-
         return dot_state
+
+    def step(self, action):
+        print(self.__ts)
+
+        self.__ts = self.uavPara.ts
+
+        # 获取在体系到地球系角速度转换矩阵， 并获取载体系下的角速度
+        att_cos = np.cos(self.attitude)
+        att_sin = np.sin(self.attitude)
+
+        self.rotor_mat = np.array([[1, att_sin[1]*att_sin[0]/att_cos[1], att_sin[1]*att_cos[0]/att_cos[1]],
+                                  [0, att_cos[0], -att_sin[0]],
+                                  [0, att_sin[0]/att_cos[1], att_cos[0]/att_cos[1]]])
+
+        state_body = (np.linalg.inv(self.rotor_mat)@self.attitude.T).reshape(3)
+        state_temp = np.hstack([self.position, self.velocity, self.attitude, state_body])
+        # state [x, y, z, vx, vy, vz, phi, theta, pis, p, q, r]
+
+        state_next = rk4(self.dynamic_basic, state_temp, action, self.uavPara.ts)
+        [self.position, self.velocity, self.attitude, state_body] = np.split(state_next, 4)
+        self.angular = (self.rotor_mat @ state_body.T).reshape(3)
+
+        # calculate the accelerate
+        state_dot = self.dynamic_basic(state_temp, action)
+        self.acc = state_dot[3:6]
+
+        # 2. Calculate Sensor sensor model
+        if self.simPara.enableSensorSys:
+            for index, sensor in enumerate(self.sensorList):
+                if isinstance(sensor, SensorBase.SensorBase):
+                    sensor.update(np.hstack([state_next, self.acc]), self.__ts)
+        ob = self.observe()
+
+        # 3. Check whether finish (failed or completed)
+        finish_flag = self.is_finished()
+
+        # 4. Calculate a reference reward
+        reward = self.get_reward()
+
+        return ob, reward, finish_flag
 
     def observe(self):
         """out put the system state, with sensor system or without sensor system"""
@@ -435,14 +473,104 @@ class QuadModel(object):
                  + np.sum(np.square(self.attitude)) / 3 + np.sum(np.square(self.angular)) / 10
         return reward
 
-    def step(self, action):
-        print(self.__ts)
+    def controller_pid(self, state, ref_state=np.array([0, 0, 0, 0])):
+        """ pid controller
+        :param state: system state, 12
+        :param ref_state: reference value for x, y, z, yaw
+        :return: control value for four motors
+        """
+        action = np.zeros(4)
 
-        self.__ts = self.uavPara.ts
+        # position-velocity cycle, velocity cycle is regard as kd
+        ki_pos = np.array([0.0, 0.0, 0.0])
+        kp_pos = np.array([0.05, 0.05, 0.05])
+        kp_vel = np.array([1.01, 1.01, 1.4])
 
-        state_temp = np.hstack([self.position, self.velocity, self.attitude, self.angular])
-        state_body_next = rk4(self.dynamic_basic, state_temp, action, self.uavPara.ts)
-        [self.position, self.velocity, self.attitude, self.angular] = np.split(state_body_next, 4)
+        # calculate a_pos
+        err_pos = ref_state[0:3] - state[0:3]
+        err_vel = - state[3:6]
+        a_pos = kp_pos * err_pos + kp_vel * err_vel
+        a_pos[2] = a_pos[2] + self.uavPara.g
+        u1 = self.uavPara.uavM * a_pos[2]/(np.cos(state[6])*np.cos(state[7]))
+
+        # attitude-angular cycle, angular cycle is regard as kd
+        kp_angle = np.array([1, 1, 1])
+        kp_angular = np.array([7.7, 7.7, 7])
+
+        # calculate a_angle
+        phi = state[6]
+        theta = state[7]
+        phy = state[8]
+
+        phy_ref = ref_state[3]
+        phi_ref = np.arcsin(self.uavPara.uavM * (a_pos[0] * np.sin(phy_ref) - a_pos[1] * np.cos(phy_ref)) / u1)
+        theta_ref = np.arcsin(
+            self.uavPara.uavM * (a_pos[0] * np.cos(phy_ref) + a_pos[1] * np.sin(phy_ref)) / (u1 * np.cos(phi_ref)))
+        angle = np.array([phi, theta, phy])
+        # print(angle, 'angle')
+        angle_ref = np.array((phi_ref, theta_ref, phy_ref))
+        angle_err = angle_ref - angle
+        angle_vel_err = -state[9:12]
+        a_angle = kp_angle * angle_err + kp_angular * angle_vel_err
+        u2 = a_angle[0] * self.uavPara.uavInertia[0]
+        u3 = a_angle[1] * self.uavPara.uavInertia[1]
+        u4 = a_angle[2] * self.uavPara.uavInertia[2]
+        action = np.array([u1, u2, u3, u4])
+
+        rotor_rate = self.rotor_distribute_dynamic
+
+        return action, rotor_rate
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+
+    print('PID CONTROLLER TEST')
+    uavPara = QuadParas(structure_type=StructureType.quad_x)
+    simPara = QuadSimOpt(init_mode=SimInitType.fixed,
+                         enable_sensor_sys=False,
+                         init_att=np.array([0., 0., 0]),
+                         init_pos=np.array([0, 0, 0]))
+    quad1 = QuadModel(uavPara, simPara)
+    record = MemoryStore.DataRecord()
+    record.clear()
+    step_cnt = 0
+    for i in range(3000):
+        ref = np.array([0., 10, 0., 0])
+        state_Temp = quad1.observe()
+        action2, rotor_rate = quad1.controller_pid(state_Temp, ref)
+        print('action:', action2)
+        quad1.step(action2)
+        record.buffer_append((state_Temp, action2))
+        step_cnt = step_cnt + 1
+    record.episode_append()
+
+    print('Quadrotor structure type', quad1.uavPara.structureType)
+    # quad1.reset_states()
+    print('Quadrotor get reward:', quad1.get_reward())
+    data = record.get_episode_buffer()
+    bs = data[0]
+    ba = data[1]
+    t = range(0, record.count)
+    # mpl.style.use('seaborn')
+    fig1 = plt.figure(1)
+    plt.clf()
+    plt.subplot(3, 1, 1)
+    plt.plot(t, bs[t, 6] / D2R, label='roll')
+    plt.plot(t, bs[t, 7] / D2R, label='pitch')
+    plt.plot(t, bs[t, 8] / D2R, label='yaw')
+    plt.ylabel('Attitude $(\circ)$', fontsize=15)
+    plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+    plt.subplot(3, 1, 2)
+    plt.plot(t, bs[t, 0], label='x')
+    plt.plot(t, bs[t, 1], label='y')
+    plt.ylabel('Position (m)', fontsize=15)
+    plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+    plt.subplot(3, 1, 3)
+    plt.plot(t, bs[t, 2], label='z')
+    plt.ylabel('Altitude (m)', fontsize=15)
+    plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+    plt.show()
 
 
 

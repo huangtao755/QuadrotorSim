@@ -6,6 +6,7 @@ import torch as t
 
 import Evn.Quadrotor.QuadrotorFlyModel as Qfm
 
+D2R = np.pi / 180
 
 class PidControl(object):
     def __init__(self,
@@ -92,7 +93,7 @@ class PidControl(object):
         pos = state[0:3]
         ref_pos = ref_state[0:3]
         err_p_pos_o = ref_pos - pos  # get new error of pos
-        err_p_pos_ = np.array(8 * t.tanh(t.tensor(err_p_pos_o / 8)))
+        err_p_pos_ = np.array(3 * t.tanh(t.tensor(err_p_pos_o / 3)))
         # err_p_pos_ = err_p_pos_.clip(np.array([-8, -8, -8]), np.array([8, 8, 8]))
 
         if self.step_num == 0:
@@ -157,6 +158,9 @@ class PidControl(object):
         # print('__________________________________')
 
         err_p_att_ = ref_att - att
+
+        err_p_att_[0:2] = 14 * D2R * np.tanh(err_p_att_[0:2] / D2R / 14)
+        err_p_att_[2] = 10 * D2R * np.tanh(err_p_att_[2] / D2R / 10)
 
         if self.step_num == 0:
             self.err_d_att = np.zeros(3)

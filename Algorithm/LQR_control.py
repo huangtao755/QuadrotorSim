@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import scipy.linalg as la
 import time
 
+
 def solve_DARE(A, B, Q, R):
     """
     :brief:     solve a discrete time_Algebraic Riccati equation (DARE)

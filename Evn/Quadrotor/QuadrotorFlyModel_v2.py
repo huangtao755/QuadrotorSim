@@ -3,8 +3,6 @@ from enum import Enum
 
 import numpy as np
 
-from matplotlib import pyplot as plt
-
 from Comman import MemoryStore
 from Evn.Quadrotor import SensorCompass, SensorGps, SensorBase, SensorImu
 
@@ -22,7 +20,7 @@ def rk4(func, x0, u, h):
     """Runge Kutta 4 order update function
     :param func: system dynamic
     :param x0: system state
-    :param oil: control input
+    :param u: control input
     :param h: time of sample
     :return: state of next time
     """
@@ -168,12 +166,12 @@ class QuadActuator(object):
         # rate of rotor
         self.rotorRate = np.zeros([self.para.numOfRotors])
 
-    def dynamic_actuator(self, rotor_rate, oil):
+    def dynamic_actuator(self, motor_rate, oil):
         """dynamic of motor and propeller
         input: rotorRate, u
         output: rotorRateDot,
         """
-        rate_dot = self.motorPara_scale * oil + self.motorPara_bias - self.para.rotorTimScale * rotor_rate
+        rate_dot = self.motorPara_scale * oil + self.motorPara_bias - self.para.rotorTimScale * motor_rate
         return rate_dot
     
     def reset(self):
@@ -247,18 +245,18 @@ class QuadModel(object):
                                                   self.uavPara.rotorCt,
                                                   self.uavPara.rotorCt,
                                                   self.uavPara.rotorCt],
+                                                  [self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
+                                                  -self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
+                                                  -self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
+                                                  self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt],
                                                   [-self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
                                                   -self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
                                                   self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
                                                   self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt],
-                                                  [-self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
-                                                  self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
-                                                  self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt,
-                                                  -self.uavPara.uavL/np.sqrt(2)*self.uavPara.rotorCt],
-                                                  [self.uavPara.rotorCm,
-                                                  -self.uavPara.rotorCm,
+                                                  [-self.uavPara.rotorCm,
                                                   self.uavPara.rotorCm,
-                                                  -self.uavPara.rotorCm]]))
+                                                  -self.uavPara.rotorCm,
+                                                  self.uavPara.rotorCm]]))
 
         # initial the sensors
         if self.simPara.enableSensorSys:
@@ -328,30 +326,31 @@ class QuadModel(object):
     def rotor_distribute_dynamic(self, action):
         action = action.reshape((4, 1))
         if self.uavPara.structureType == StructureType.quad_plus:
-            motor_rate_square = (self.gain_mat_plus @ action).reshape(4)    # mat(4*4) @ mat(4*1) -> mat(4*1) 变为 1*4 的向量
+            motor_rate_square = np.sqrt((self.gain_mat_plus @ action).reshape(4))
+            # mat(4*4) @ mat(4*1) -> mat(4*1) 变为 1*4 的向量
         elif self.uavPara.structureType == StructureType.quad_x:
-            motor_rate_square = (self.gain_mat_x @ action).reshape(4)
+            print(self.gain_mat_x @ action)
+            motor_rate_square = np.sqrt((self.gain_mat_x @ action).reshape(4))
+            print(self.gain_mat_x.T, 'gain_mat_x')
         else:
             motor_rate_square = np.zeros(4)
 
         return motor_rate_square
 
-    def dynamic_basic(self, state, action:  np.array):
-        """ calculate /dot(state) = f(state) + u(state)
-        This function will be executed many times during simulation, so high performance is necessary.
+    def dynamic_basic(self,
+                      state,
+                      action):
+        """
+
         :param state:
-            0       1       2       3       4       5
-            p_x     p_y     p_z     v_x     v_y     v_z
-            6       7       8       9       10      11
-            roll    pitch   yaw     p       q       r
-        :param action: u1(sum of thrust), u2(torque for roll), u3(pitch), u4(yaw)
-        :return: derivatives of state inclfrom bokeh.plotting import figure
+        :param action:
+        :return:
         """
         para = self.uavPara
 
         # get motor rotor rate
-        motor_rate = np.sqrt(self.rotor_distribute_dynamic(action))
-        rotor_rate_sum = np.array([1, -1, 1, -1]) @ motor_rate.T
+        motor_rate = self.rotor_distribute_dynamic(action)
+        rotor_rate_sum = np.array([1, -1, 1, -1]) @ motor_rate.T                 # 数组加.T无效，为了代码清晰，所以加这一步
 
         # variable used repeatedly
         att_cos = np.cos(state[6:9])
@@ -359,7 +358,8 @@ class QuadModel(object):
         noise_pos = self.simPara.sysNoisePos * np.random.random(3)
         noise_att = self.simPara.sysNoiseAtt * np.random.random(3)
 
-        dot_state = np.zeros([12])
+        dot_state = np.zeros(12)
+
         # dynamic of position cycle
         dot_state[0:3] = state[3:6]
         # ########### we need not to calculate the whole rotation matrix because just care last column
@@ -370,8 +370,12 @@ class QuadModel(object):
             att_cos[0] * att_cos[1]
         ]) \
             - np.array([0, 0, para.g]) \
-            - np.array([para.bodyKp, para.bodyKp, para.bodyKp]) @ state[3:6].T / para.uavM \
-            + noise_pos / para.uavM
+            - np.array([para.bodyKp, para.bodyKp, para.bodyKp]) * state[3:6] / para.uavM \
+            + noise_pos / para.uavM\
+
+        "________________调节内环时使用,正常使用时请注释掉________________"
+        # dot_state[3:6] = np.array([0, 0, 0])
+        "________________调节内环时使用,正常使用时请注释掉________________"
 
         # dynamic of attitude cycle
         # Coriolis force on UAV from motor, this is affected by the direction of rotation.
@@ -379,10 +383,9 @@ class QuadModel(object):
         #   The signals of this equation should be same with toque for yaw
 
         # ############# 计算机体系下姿态速度
-        dot_state[6:9] = self.rotor_mat @ state[9:12]        # 获取世界角速度
+        dot_state[6:9] = self.rotor_mat @ state[9:12].T        # 获取世界角速度
 
         # ############# 计算机体系下角加速度
-
         dot_state[9:12] = np.array([
             action[1] / para.uavInertia[0]
             + state[10] * state[11] * (para.uavInertia[1] - para.uavInertia[2]) / para.uavInertia[0]
@@ -402,8 +405,6 @@ class QuadModel(object):
         return dot_state
 
     def step(self, action):
-        print(self.__ts)
-
         self.__ts = self.uavPara.ts
 
         # 获取在体系到地球系角速度转换矩阵， 并获取载体系下的角速度
@@ -414,7 +415,7 @@ class QuadModel(object):
                                   [0, att_cos[0], -att_sin[0]],
                                   [0, att_sin[0]/att_cos[1], att_cos[0]/att_cos[1]]])
 
-        state_body = (np.linalg.inv(self.rotor_mat)@self.attitude.T).reshape(3)
+        state_body = (np.linalg.inv(self.rotor_mat)@self.angular.T).reshape(3)
         state_temp = np.hstack([self.position, self.velocity, self.attitude, state_body])
         # state [x, y, z, vx, vy, vz, phi, theta, pis, p, q, r]
 
@@ -473,56 +474,108 @@ class QuadModel(object):
                  + np.sum(np.square(self.attitude)) / 3 + np.sum(np.square(self.angular)) / 10
         return reward
 
-    def controller_pid(self, state, ref_state=np.array([0, 0, 0, 0])):
-        """ pid controller
-        :param state: system state, 12
-        :param ref_state: reference value for x, y, z, yaw
-        :return: control value for four motors
+    def controller_pid(self, state,
+                       ref_state=np.zeros(4),
+                       ref_v_compensate=np.zeros(6),
+                       ref_a_compensate=np.zeros(6)):
+        """
+
+        :param state:
+        :param ref_state:
+        :param ref_v_compensate:
+        :param ref_a_compensate:
+        :return:
         """
         action = np.zeros(4)
 
         # position-velocity cycle, velocity cycle is regard as kd
         ki_pos = np.array([0.0, 0.0, 0.0])
-        kp_pos = np.array([0.05, 0.05, 0.05])
-        kp_vel = np.array([1.01, 1.01, 1.4])
+        kp_pos = np.array([1.5, 1.5, 1.1])
+        kp_vel = np.array([1.65, 1.65, 1.5])
 
         # calculate a_pos
-        err_pos = ref_state[0:3] - state[0:3]
-        err_vel = - state[3:6]
-        a_pos = kp_pos * err_pos + kp_vel * err_vel
-        a_pos[2] = a_pos[2] + self.uavPara.g
-        u1 = self.uavPara.uavM * a_pos[2]/(np.cos(state[6])*np.cos(state[7]))
+        pos_err = ref_state[0:3] - state[0:3]
+
+        pos_err[0:2] = 3 * np.tanh(pos_err[0:2] / 3)
+        pos_err[2] = 3 * np.tanh(pos_err[2] / 3)
+
+        pos_v_err = ref_v_compensate[0:3] - state[3:6]
+        pos_a = kp_pos * pos_err + kp_vel * pos_v_err + ref_a_compensate[0:3]
+        pos_a[2] = pos_a[2] + self.uavPara.g
+        print(pos_a)
+        u1 = self.uavPara.uavM * pos_a[2]/(np.cos(state[6])*np.cos(state[7]))
 
         # attitude-angular cycle, angular cycle is regard as kd
-        kp_angle = np.array([1, 1, 1])
-        kp_angular = np.array([7.7, 7.7, 7])
+        kp_angle = np.array([75, 75, 45])
+        kp_angular = np.array([13, 13, 11])
+
+        # calculate a_angle
+        psi_ref = ref_state[3]
+        # psi_ref = 90 * D2R * np.tanh(psi_ref / D2R / 90)
+        phi_ref = np.arcsin(np.tanh(self.uavPara.uavM * (pos_a[0] * np.sin(psi_ref)
+                                                         - pos_a[1] * np.cos(psi_ref)) / u1))
+
+        theta_ref = np.arcsin(np.tanh(self.uavPara.uavM * (pos_a[0] * np.cos(psi_ref)
+                                                   + pos_a[1] * np.sin(psi_ref)) / (u1 * np.cos(phi_ref))))
+        angle_ref = np.array([phi_ref, theta_ref, psi_ref])
+        print(angle_ref)
+
+        angle_err = angle_ref - state[6:9]
+
+        angle_err[0:2] = 14 * D2R * np.tanh(angle_err[0:2] / D2R / 14)
+        angle_err[2] = 10 * D2R * np.tanh(angle_err[2] / D2R / 10)
+
+        angle_vel_err = ref_v_compensate[3:6] - state[9:12]
+        a_angle = kp_angle * angle_err + kp_angular * angle_vel_err + ref_a_compensate[3:6]
+        u2 = a_angle[0] * self.uavPara.uavInertia[0]
+        u3 = a_angle[1] * self.uavPara.uavInertia[1]
+        u4 = a_angle[2] * self.uavPara.uavInertia[2]
+        action = np.array([u1, u2, u3, u4])
+        motor_rate = self.rotor_distribute_dynamic(action)           # 计算转速
+
+        return action, motor_rate
+
+    def inner_pid(self,
+                  state, ref_angle=np.zeros(3),
+                  ref_dangle_compensate=np.zeros(3),
+                  ref_ddangle_compensate=np.zeros(3)):
+        "--------------------!!!!!!!!!!!!使用前一定要将动力学方程中的加速度设为0!!!!!!!!!!!!-------------------"
+        action = np.zeros(4)
+        u1 = self.uavPara.uavM * self.uavPara.g / (np.cos(state[6]) * np.cos(state[7]))
+
+        # attitude-angular cycle, angular cycle is regard as kd
+        kp_angle = np.array([75, 75, 45])
+        kp_angular = np.array([13, 13, 11])
 
         # calculate a_angle
         phi = state[6]
         theta = state[7]
-        phy = state[8]
+        psi = state[8]
+        angle = np.array([phi, theta, psi])
 
-        phy_ref = ref_state[3]
-        phi_ref = np.arcsin(self.uavPara.uavM * (a_pos[0] * np.sin(phy_ref) - a_pos[1] * np.cos(phy_ref)) / u1)
-        theta_ref = np.arcsin(
-            self.uavPara.uavM * (a_pos[0] * np.cos(phy_ref) + a_pos[1] * np.sin(phy_ref)) / (u1 * np.cos(phi_ref)))
-        angle = np.array([phi, theta, phy])
-        # print(angle, 'angle')
-        angle_ref = np.array((phi_ref, theta_ref, phy_ref))
+        psi_ref = ref_angle[2]
+        phi_ref = ref_angle[0]
+        theta_ref = ref_angle[1]
+        angle_ref = np.array((phi_ref, theta_ref, psi_ref))
+
         angle_err = angle_ref - angle
-        angle_vel_err = -state[9:12]
-        a_angle = kp_angle * angle_err + kp_angular * angle_vel_err
+        angle_err[0:2] = 14 * D2R * np.tanh(angle_err[0:2] / D2R / 14)
+        angle_err[2] = 15 * D2R * np.tanh(angle_err[2] / D2R / 15)
+
+        angle_vel_err = ref_dangle_compensate-state[9:12]
+
+        a_angle = kp_angle * angle_err + kp_angular * angle_vel_err + ref_ddangle_compensate
         u2 = a_angle[0] * self.uavPara.uavInertia[0]
         u3 = a_angle[1] * self.uavPara.uavInertia[1]
         u4 = a_angle[2] * self.uavPara.uavInertia[2]
         action = np.array([u1, u2, u3, u4])
 
-        rotor_rate = self.rotor_distribute_dynamic
+        motor_rate = self.rotor_distribute_dynamic(action)           # 计算转速
 
-        return action, rotor_rate
+        return action, motor_rate
 
 
-if __name__ == '__main__':
+def inner_loop_adjust():
     import matplotlib.pyplot as plt
 
     print('PID CONTROLLER TEST')
@@ -535,25 +588,99 @@ if __name__ == '__main__':
     record = MemoryStore.DataRecord()
     record.clear()
     step_cnt = 0
-    for i in range(3000):
-        ref = np.array([0., 10, 0., 0])
+
+    ref = np.array([60*D2R, 60*D2R, 180*D2R])
+    # ref = np.zeros(3)
+    ref_v = np.zeros(3)
+    ref_a = np.zeros(3)
+
+    state_Temp = quad1.observe()
+    action2, rotor_rate = quad1.inner_pid(state_Temp, ref)
+
+    fig = plt.figure(1, figsize=(10, 7))
+    plt.ion()
+
+    ref_state_data = np.array(ref / D2R)
+    state_data = np.array(np.hstack((state_Temp[6:9]/D2R, action2/quad1.uavPara.uavL)))
+    print(state_data)
+
+    time_cnt = np.zeros((1, 1))
+
+    for i in range(1000):
+        ref = np.array([np.sin(np.pi*i*0.01 / 2)*25*D2R,
+                        np.cos(np.pi*i*0.01 / 2)*25*D2R,
+                        np.sin(np.pi*i*0.01 / 2)*15*D2R])
+        ref_v = np.array([np.cos(np.pi*i*0.01 / 2)*25*D2R*np.pi / 2,
+                          -np.sin(np.pi*i*0.01 / 2)*25*D2R*np.pi / 2,
+                          np.cos(np.pi*i*0.01 / 2)*15*D2R*np.pi / 2])
+        ref_a = np.array([-np.sin(np.pi * i * 0.01 / 2) * 25 * D2R * (np.pi / 2)**2,
+                          -np.cos(np.pi * i * 0.01 / 2) * 25 * D2R * (np.pi / 2)**2,
+                          -np.sin(np.pi * i * 0.01 / 2) * 25 * D2R * (np.pi / 2)**2])
+        # ref = ref
         state_Temp = quad1.observe()
-        action2, rotor_rate = quad1.controller_pid(state_Temp, ref)
-        print('action:', action2)
+        action2, rotor_rate = quad1.inner_pid(state_Temp,
+                                              ref_angle=ref,
+                                              ref_dangle_compensate=ref_v,
+                                              ref_ddangle_compensate=ref_a)
+        print('_______________________第%d步仿真__________________________' % (step_cnt+1))
         quad1.step(action2)
         record.buffer_append((state_Temp, action2))
         step_cnt = step_cnt + 1
+        print('\n--------------------------------------------------------')
+
+        if i % 10 == 2:
+
+            time_cnt = np.vstack((time_cnt, np.array(step_cnt * 0.01)))
+            ref_state_data = np.vstack((ref_state_data, ref / D2R))
+            print(np.hstack((state_Temp[6:9] / D2R, action2)))
+            state_data = np.vstack((state_data, np.hstack((state_Temp[6:9] / D2R, action2/quad1.uavPara.uavL))))
+
+            plt.clf()
+            plt.suptitle('adjust inner PID')
+
+            fig_phi = plt.subplot(4, 1, 1)
+            fig_phi.set_title('angle phi')
+            fig_phi.set_xlabel('t/s')
+            fig_phi.set_ylabel('phi/$(\circ)$')
+            plt.plot(time_cnt, state_data[:, 0])
+            plt.plot(time_cnt, ref_state_data[:, 0])
+
+            fig_theta = plt.subplot(4, 1, 2)
+            fig_theta.set_title('angle theta')
+            fig_theta.set_xlabel('t/s')
+            fig_theta.set_ylabel('theta/$(\circ)$')
+            plt.plot(time_cnt, state_data[:, 1])
+            plt.plot(time_cnt, ref_state_data[:, 1])
+
+            fig_psi = plt.subplot(4, 1, 3)
+            fig_psi.set_title('angle psi')
+            fig_psi.set_xlabel('t/s')
+            fig_psi.set_ylabel('psi/$(\circ)$')
+            plt.plot(time_cnt, state_data[:, 2])
+            plt.plot(time_cnt, ref_state_data[:, 2])
+
+            fig_action = plt.subplot(4, 1, 4)
+            fig_action.set_title('angle action')
+            fig_action.set_xlabel('t/s')
+            fig_action.set_ylabel('action/n')
+            plt.plot(time_cnt, state_data[:, 4])
+            plt.plot(time_cnt, state_data[:, 5])
+            plt.plot(time_cnt, state_data[:, 6])
+
+            plt.pause(0.0001)
+
     record.episode_append()
 
-    print('Quadrotor structure type', quad1.uavPara.structureType)
-    # quad1.reset_states()
+    plt.ioff()
+
     print('Quadrotor get reward:', quad1.get_reward())
+    # print(ref[3]/D2R)
     data = record.get_episode_buffer()
     bs = data[0]
     ba = data[1]
     t = range(0, record.count)
     # mpl.style.use('seaborn')
-    fig1 = plt.figure(1)
+    fig1 = plt.figure(2)
     plt.clf()
     plt.subplot(3, 1, 1)
     plt.plot(t, bs[t, 6] / D2R, label='roll')
@@ -571,6 +698,158 @@ if __name__ == '__main__':
     plt.ylabel('Altitude (m)', fontsize=15)
     plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
     plt.show()
+
+
+def system_adjust():
+    import matplotlib.pyplot as plt
+
+    print('PID CONTROLLER TEST')
+    uavPara = QuadParas(structure_type=StructureType.quad_x)
+    simPara = QuadSimOpt(init_mode=SimInitType.fixed,
+                         enable_sensor_sys=False,
+                         init_att=np.array([0., 0., 0.]),
+                         init_pos=np.array([0., 2., 0.]))
+    quad1 = QuadModel(uavPara, simPara)
+    record = MemoryStore.DataRecord()
+    record.clear()
+    step_cnt = 0
+
+    # ref = np.array([10, 10, 10, np.pi/2])
+    ref = np.zeros(4)
+    ref_v = np.zeros(6)
+    ref_a = np.zeros(6)
+
+    state_Temp = quad1.observe()
+    action, rotor_rate = quad1.controller_pid(state_Temp, ref)
+    action[0] -= quad1.uavPara.uavM * quad1.uavPara.g \
+                 * np.cos(state_Temp[6]) * np.cos(state_Temp[7])
+
+    fig0 = plt.figure(1, figsize=(13, 8))
+    plt.ion()
+
+    ref_state_data = np.array(ref)
+    state_data = np.array(np.hstack((state_Temp, action)))
+    print(state_data)
+
+    time_cnt = np.zeros((1, 1))
+
+    for i in range(3000):
+        ref = np.array([np.sin(np.pi*i*0.01/4)*3,
+                        np.cos(np.pi*i*0.01/4)*3,
+                        0,
+                        np.pi*i*0.01/4])
+        ref_v = np.array([np.cos(np.pi*(i+1)*0.01 / 4)*3*np.pi / 4,
+                         -np.sin(np.pi*(i+1)*0.01 / 4)*3*np.pi / 4,
+                         0,
+                         -np.pi*0.01/4])
+        ref_a = np.array([-np.sin(np.pi * (i+1) * 0.01 / 4) * 3 * (np.pi / 4)**2,
+                         -np.cos(np.pi * (i+1) * 0.01 / 4) * 3 * (np.pi / 4)**2,
+                         0,
+                         0])
+        # ref = ref
+        state_Temp = quad1.observe()
+        action, rotor_rate = quad1.controller_pid(state=state_Temp,
+                                                  ref_state=ref,
+                                                  ref_v_compensate=ref_v,
+                                                  ref_a_compensate=ref_a)
+
+        print('_______________________第%d步仿真__________________________' % (step_cnt + 1))
+        quad1.step(action)
+        record.buffer_append((state_Temp, action))
+        step_cnt = step_cnt + 1
+        print('\n--------------------------------------------------------')
+
+        if i % 10 == 2:
+            time_cnt = np.vstack((time_cnt, np.array(step_cnt * 0.01)))
+
+            ref_state_data = np.vstack((ref_state_data, ref))
+            action[0] -= quad1.uavPara.uavM * quad1.uavPara.g \
+                         * np.cos(state_Temp[6]) * np.cos(state_Temp[7])
+            state_data = np.vstack((state_data, np.hstack((state_Temp, action))))
+
+            plt.clf()
+            plt.suptitle('adjust PID')
+
+            fig_posxy = plt.subplot(3, 2, 1)
+            fig_posxy.set_title('pos_x/pos_y')
+            fig_posxy.set_xlabel('t/s')
+            fig_posxy.set_ylabel('pos/m')
+            plt.plot(time_cnt, state_data[:, 0])
+            plt.plot(time_cnt, ref_state_data[:, 0])
+            plt.plot(time_cnt, state_data[:, 1])
+            plt.plot(time_cnt, ref_state_data[:, 1])
+
+            fig_posz = plt.subplot(3, 2, 3)
+            fig_posz.set_title('pos_z')
+            fig_posz.set_xlabel('t/s')
+            fig_posz.set_ylabel('pos/m')
+            plt.plot(time_cnt, state_data[:, 2])
+            plt.plot(time_cnt, ref_state_data[:, 2])
+
+            fig_angle_xy = plt.subplot(3, 2, 2)
+            fig_angle_xy.set_title('angle phi/theta')
+            fig_angle_xy.set_xlabel('t/s')
+            fig_angle_xy.set_ylabel('phi/theta/$(\circ)$')
+            plt.plot(time_cnt, state_data[:, 6]/D2R)
+            plt.plot(time_cnt, state_data[:, 7]/D2R)
+
+            fig_angle_z = plt.subplot(3, 2, 4)
+            fig_angle_z.set_title('angle psi')
+            fig_angle_z.set_xlabel('t/s')
+            fig_angle_z.set_ylabel('psi/$(\circ)$')
+            plt.plot(time_cnt, state_data[:, 8]/D2R)
+            plt.plot(time_cnt, ref_state_data[:, 3]/D2R)
+
+            fig_pos_f = plt.subplot(3, 2, 5)
+            fig_pos_f.set_title('pos_f')
+            fig_pos_f.set_xlabel('t/s')
+            fig_pos_f.set_ylabel('f/N')
+            plt.plot(time_cnt, state_data[:, 12])
+
+            fig_angle_f = plt.subplot(3, 2, 6)
+            fig_angle_f.set_title('angle_f')
+            fig_angle_f.set_xlabel('t/s')
+            fig_angle_f.set_ylabel('f/N')
+            plt.plot(time_cnt, state_data[:, 13]/quad1.uavPara.uavL)
+            plt.plot(time_cnt, state_data[:, 14]/quad1.uavPara.uavL)
+            plt.plot(time_cnt, state_data[:, 15]/quad1.uavPara.uavL)
+
+            plt.pause(0.0001)
+
+    record.episode_append()
+
+    plt.ioff()
+
+    print('Quadrotor structure type', quad1.uavPara.structureType)
+    print('Quadrotor get reward:', quad1.get_reward())
+    # print(ref[3]/D2R)
+    # data = record.get_episode_buffer()
+    # bs = data[0]
+    # ba = data[1]
+    # t = range(0, record.count)
+    # # mpl.style.use('seaborn')
+    # fig1 = plt.figure(2)
+    # plt.clf()
+    # plt.subplot(3, 1, 1)
+    # plt.plot(t, bs[t, 6] / D2R, label='roll')
+    # plt.plot(t, bs[t, 7] / D2R, label='pitch')
+    # plt.plot(t, bs[t, 8] / D2R, label='yaw')
+    # plt.ylabel('Attitude $(\circ)$', fontsize=15)
+    # plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+    # plt.subplot(3, 1, 2)
+    # plt.plot(t, bs[t, 0], label='x')
+    # plt.plot(t, bs[t, 1], label='y')
+    # plt.ylabel('Position (m)', fontsize=15)
+    # plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+    # plt.subplot(3, 1, 3)
+    # plt.plot(t, bs[t, 2], label='z')
+    # plt.ylabel('Altitude (m)', fontsize=15)
+    # plt.legend(fontsize=15, bbox_to_anchor=(1, 1.05))
+    plt.show()
+
+
+if __name__ == '__main__':
+    system_adjust()
 
 
 

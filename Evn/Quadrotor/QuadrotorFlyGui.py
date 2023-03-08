@@ -8,7 +8,7 @@ import numpy as np
 
 from Comman import Utils as Cf
 from Comman import MemoryStore
-from Evn.Quadrotor import QuadrotorFlyModel as Qfm
+from Evn.Quadrotor import QuadrotorFlyModel_v2 as Qfm
 
 
 class QuadrotorFlyGuiEnv(object):

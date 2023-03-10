@@ -10,11 +10,13 @@ D2R = Qfm.D2R
 current_path = os.path.abspath(os.path.join(os.getcwd(), "../.."))
 
 
-class QuadControl(object):
+class QuadControl(Qfm.QuadModel):
     """
     :brief:
     """
     def __init__(self,
+                 uav_para,
+                 sim_para,
                  structure_type=Qfm.StructureType.quad_x,
                  init_att=np.array([0, 0, 0]),
                  init_pos=np.array([0, 0, 0]),
@@ -25,12 +27,8 @@ class QuadControl(object):
         :param init_att:
         :param init_pos:
         """
-        self.uav_para = Qfm.QuadParas(structure_type=structure_type)
-        self.sim_para = Qfm.QuadSimOpt(init_mode=Qfm.SimInitType.fixed, init_att=init_att,
-                                       init_pos=init_pos)
-        self.quad = Qfm.QuadModel(self.uav_para, self.sim_para)
-
-        self.state_temp = self.quad.observe()
+        super(QuadControl, self).__init__(uav_para, sim_para)
+        self.state_temp = self.observe()
         self.record = MemoryStore.DataRecord()
         self.record.clear()
         self.step_num = 0
@@ -46,22 +44,22 @@ class QuadControl(object):
         b = np.ones(4)
         self.c = np.hstack((a, b))
 
-    def backstep_control(self, ref, ref_v, ref_a, action):
-        para = self.uav_para
+    def back_step_control(self, ref, ref_v, ref_a, action):
+        para = self.uavPara
         c = self.c
 
-        att_cos = np.cos(self.quad.attitude)
-        att_sin = np.sin(self.quad.attitude)
+        att_cos = np.cos(self.attitude)
+        att_sin = np.sin(self.attitude)
 
-        self.quad.rotor_mat = np.array([[1, att_sin[1]*att_sin[0]/att_cos[1], att_sin[1]*att_cos[0]/att_cos[1]],
+        self.rotor_mat = np.array([[1, att_sin[1]*att_sin[0]/att_cos[1], att_sin[1]*att_cos[0]/att_cos[1]],
                                        [0, att_cos[0], -att_sin[0]],
                                        [0, att_sin[0]/att_cos[1], att_cos[0]/att_cos[1]]])
 
-        state_body = (np.linalg.inv(self.quad.rotor_mat) @ self.quad.angular.T).reshape(3)
-        state_temp = np.hstack([self.quad.position, self.quad.velocity, self.quad.attitude, state_body])
+        state_body = (np.linalg.inv(self.rotor_mat) @ self.angular.T).reshape(3)
+        state_temp = np.hstack([self.position, self.velocity, self.attitude, state_body])
         # state [x, y, z, vx, vy, vz, phi, theta, pis, p, q, r]
 
-        dot_state = self.quad.dynamic_basic(self.state_temp, action)
+        dot_state = self.dynamic_basic(self.state_temp, action)
 
         u1 = para.uavM / (np.cos(state_temp[6])*np.cos(state_temp[7])) *\
             (- (1 + c[8] * c[9]) * (state_temp[2] - ref[2])
@@ -103,13 +101,13 @@ class QuadControl(object):
 
 
 def traject_track():
-
-    print('backstepping control test')
+    print('back_step control test')
 
     uav_para = Qfm.QuadParas(structure_type=Qfm.StructureType.quad_x)
     sim_para = Qfm.QuadSimOpt(init_mode=Qfm.SimInitType.fixed,
                               init_att=np.array([0, 0, 0]), init_pos=np.array([-2, 0, 0]))
-    quad = Qfm.QuadModel(uav_para, sim_para)
+    quad = QuadControl(uav_para=uav_para,
+                       sim_para=sim_para)
     record = MemoryStore.DataRecord()
     record.clear()
 
